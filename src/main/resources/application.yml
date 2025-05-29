@@ -1,0 +1,15 @@
+spring:
+  application:
+    name:
+      otobus-api
+  datasource:
+    url: jdbc:postgresql://localhost:5432/agate
+    username: youruser
+    password: yourpassword
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+Server:
+  port: 8080
+
