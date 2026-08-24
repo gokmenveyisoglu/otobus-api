@@ -21,14 +21,18 @@ public class SchemaHeaderServiceImpl implements SchemaHeaderService {
     @Override
     public void saveSchemaHeader(SchemaHeader schemaHeader) {
 
-        schemaHeaderRepository.findAll().forEach(schemaHeader1 -> {
-            String str1 = schemaHeader.getDescription().replaceAll("\\s+", "");
-            String str2 = schemaHeader1.getDescription().replaceAll("\\s+", "");
-            if (!str1.equals(str2))
-                schemaHeaderRepository.save(schemaHeader);
-            else
-                System.out.println("Same schema header exist");
-        });
+        if (!schemaHeaderRepository.findAll().isEmpty()){
+            schemaHeaderRepository.findAll().forEach(schemaHeader1 -> {
+                String str1 = schemaHeader.getDescription().replaceAll("\\s+", "");
+                String str2 = schemaHeader1.getDescription().replaceAll("\\s+", "");
+                if (!str1.equals(str2))
+                    schemaHeaderRepository.save(schemaHeader);
+                else
+                    System.out.println("Same schema header exist");
+            });
+        } else
+            schemaHeaderRepository.save(schemaHeader);
+
     }
 
     @Override

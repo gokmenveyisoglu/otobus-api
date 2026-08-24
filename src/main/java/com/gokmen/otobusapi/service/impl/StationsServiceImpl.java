@@ -6,6 +6,7 @@ import com.gokmen.otobusapi.service.StationsService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class StationsServiceImpl implements StationsService {
@@ -33,7 +34,27 @@ public class StationsServiceImpl implements StationsService {
     }
 
     @Override
+    public void updateStationById(int id, Stations stations) {
+        stationRepository.findById(id).ifPresent(stations1 -> {
+            stations1.setStation_name(stations.getStation_name());
+            stations1.setAddress(stations.getAddress());
+            stations1.setStationOrder(stations.getStationOrder());
+            stationRepository.save(stations1);
+        });
+    }
+
+    @Override
     public List<Stations> findStations() {
         return stationRepository.findAll();
+    }
+
+    @Override
+    public void deleteStation(String name) {
+        stationRepository.deleteByName(name);
+    }
+
+    @Override
+    public void deleteStationById(int id) {
+        stationRepository.deleteById(id);
     }
 }

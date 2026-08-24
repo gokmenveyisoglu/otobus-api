@@ -50,8 +50,10 @@ public class Travellers {
     @JsonIgnore
     private int lastStation;
 
+    @JsonIgnore
     private Date travelStart;
 
+    @JsonIgnore
     private Date travelEnd;
 
     /*@JsonIgnore

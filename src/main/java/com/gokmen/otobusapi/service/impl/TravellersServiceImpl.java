@@ -29,17 +29,8 @@ public class TravellersServiceImpl implements TravellersService {
             if (bussRepository.findById(busNo).stream().allMatch(buss -> buss.getMax_traveller() >= seatNo && seatNo >0)) {
                 if (!foreign) {
 
-                    int[] numbers = new int[11];
-
                     if (travellers.getIndentityNumber() != null || travellers.getIndentityNumber().length() == 11) {
-                        for (int i = 0; i < 11; i++) {
-                            numbers[i] = Integer.parseInt(travellers.getIndentityNumber().substring(i, (i + 1)));
-                        }
-                        boolean condition1 = (numbers[0] + numbers[1] + numbers[2] + numbers[3] + numbers[4] + numbers[5] + numbers[6] + numbers[7] + numbers[8] + numbers[9]) % 10 == numbers[10];
-                        boolean condition2 = (((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 7) + ((numbers[1] + numbers[3] + numbers[5] + numbers[7]) * 9)) % 10 == numbers[9];
-                        boolean condition3 = ((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 8) % 10 == numbers[10];
-
-                        if (condition1 && condition2 && condition3) {
+                        if (validId(travellers)) {
 
                             String first;
                             String midlle;
@@ -63,6 +54,8 @@ public class TravellersServiceImpl implements TravellersService {
                                         travellers.setSeat(seatNo);
                                         travellers.setVoyageNo(voyages);
                                         travellers.setIndentityNumber(first + midlle + last);
+                                        travellers.setTravelStart(voyages.getStartDate());
+                                        travellers.setTravelEnd(voyages.getEndDate());
                                         travellerRepository.save(travellers);
                                     } else if (travellers1.getSeat() != seatNo) {
                                         travellers.setBus_id(bussRepository.findById(busNo).stream().toList());
@@ -70,6 +63,8 @@ public class TravellersServiceImpl implements TravellersService {
                                         travellers.setSeat(seatNo);
                                         travellers.setVoyageNo(voyages);
                                         travellers.setIndentityNumber(first + midlle + last);
+                                        travellers.setTravelStart(voyages.getStartDate());
+                                        travellers.setTravelEnd(voyages.getEndDate());
                                         travellerRepository.save(travellers);
                                     } else System.out.println("Unavailable seat");
                                 });
@@ -79,7 +74,9 @@ public class TravellersServiceImpl implements TravellersService {
                                 travellers.setSeat(seatNo);
                                 travellers.setVoyageNo(voyages);
                                 travellers.setIndentityNumber(first + midlle + last);
-                                travellerRepository.save(travellers);                                                       //Reflect hatası creat-drope at
+                                travellers.setTravelStart(voyages.getStartDate());
+                                travellers.setTravelEnd(voyages.getEndDate());
+                                travellerRepository.save(travellers);                                                       //Reflect hatası creat-drop at
                             }
                         } else {
                             System.out.println("Invalid id");
@@ -96,6 +93,8 @@ public class TravellersServiceImpl implements TravellersService {
                                 travellers.setSeat(seatNo);
                                 travellers.setVoyageNo(voyages);
                                 travellers.setIndentityNumber("Foreigner");
+                                travellers.setTravelStart(voyages.getStartDate());
+                                travellers.setTravelEnd(voyages.getEndDate());
                                 travellerRepository.save(travellers);
                             } else if (travellers1.getSeat() != seatNo) {
                                 travellers.setBus_id(bussRepository.findById(busNo).stream().toList());
@@ -104,6 +103,8 @@ public class TravellersServiceImpl implements TravellersService {
                                 travellers.setSeat(seatNo);
                                 travellers.setVoyageNo(voyages);
                                 travellers.setIndentityNumber("Foreigner");
+                                travellers.setTravelStart(voyages.getStartDate());
+                                travellers.setTravelEnd(voyages.getEndDate());
                                 travellerRepository.save(travellers);
                             } else System.out.println("Unavailable seat");
                         });
@@ -114,11 +115,26 @@ public class TravellersServiceImpl implements TravellersService {
                         travellers.setSeat(seatNo);
                         travellers.setVoyageNo(voyages);
                         travellers.setIndentityNumber("Foreigner");
+                        travellers.setTravelStart(voyages.getStartDate());
+                        travellers.setTravelEnd(voyages.getEndDate());
                         travellerRepository.save(travellers);
                     }
                 }
             }
         });
+    }
+
+    private boolean validId(Travellers traveller) {
+        int[] numbers = new int[11];
+
+        for (int i = 0; i < 11; i++) {
+            numbers[i] = Integer.parseInt(traveller.getIndentityNumber().substring(i, (i + 1)));
+        }
+        boolean condition1 = (numbers[0] + numbers[1] + numbers[2] + numbers[3] + numbers[4] + numbers[5] + numbers[6] + numbers[7] + numbers[8] + numbers[9]) % 10 == numbers[10];
+        boolean condition2 = (((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 7) + ((numbers[1] + numbers[3] + numbers[5] + numbers[7]) * 9)) % 10 == numbers[9];
+        boolean condition3 = ((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 8) % 10 == numbers[10];
+        if (condition1 && condition2 && condition3) return true;
+        else return false;
     }
 
     @Override

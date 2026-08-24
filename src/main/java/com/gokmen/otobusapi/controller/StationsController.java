@@ -24,16 +24,30 @@ public class StationsController {
     public void setStation(@RequestBody Stations station){
         stationsService.setStation(station);
     }
+
     @PutMapping("{sname}")
     public void updateStation(@PathVariable("sname") String name, @RequestBody Stations stations){
         stationsService.updateStation(name, stations);
     }
+
+    @PutMapping("/id/{sid}")
+    public void updateStationById(@PathVariable("sid") int id, @RequestBody Stations stations) {
+        stationsService.updateStationById(id, stations);
+    }
+
     @GetMapping()
     public List<Stations> findLists(){
         return stationsService.findStations();
     }
 
+    @DeleteMapping("{sname}")
+    public void deleteStation(@PathVariable("sname") String name) {
+        stationsService.deleteStation(name);
+    }
 
-
+    @DeleteMapping("/id/{sid}")
+    public void deleteStationById (@PathVariable("sid") int id) {
+        stationsService.deleteStationById(id);
+    }
 
 }

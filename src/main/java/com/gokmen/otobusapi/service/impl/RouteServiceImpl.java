@@ -25,7 +25,7 @@ public class RouteServiceImpl implements RouteService {
 
     @Override
     public void setRoute(Route route) {
-        if (routeRepository.findByNo(route.getRouteNo()).isEmpty() && route.getStartDate() == route.getEndDate()) {
+        if (routeRepository.findByNo(route.getRouteNo()).isEmpty()) { //route.getStartDate() != route.getEndDate() Eklene bilir
             route.getStations().forEach(stations -> {
                 stations.setRoute(Stream.of(route).toList());
             });
@@ -34,10 +34,10 @@ public class RouteServiceImpl implements RouteService {
     }
 
     @Override
-    public void addStation(int routeId, int station) {
+    public void addStation(int routeId, int stationId) {
         routeRepository.findById(routeId).ifPresent(route -> {
             if (true){                                                                  //Koşul bul
-                stationRepository.findById(station).ifPresent(stations -> {
+                stationRepository.findById(stationId).ifPresent(stations -> {
                     List<Stations> stationsList = new ArrayList<>();
                     stationsList.add(stations);
                     route.setStations(stationsList);

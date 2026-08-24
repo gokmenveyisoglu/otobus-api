@@ -25,8 +25,8 @@ public class RouteController {
     }
 
     @PutMapping("{rid}/station/{sid}")
-    public void addStations(@PathVariable("rid") int routeId, @PathVariable("sid") int station){
-        routeService.addStation(routeId, station);
+    public void addStations(@PathVariable("rid") int routeId, @PathVariable("sid") int stationId){
+        routeService.addStation(routeId, stationId);
     }
                                 //Alt tarafı kontrol et
 
