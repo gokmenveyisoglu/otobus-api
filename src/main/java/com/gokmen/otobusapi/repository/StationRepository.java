@@ -11,12 +11,12 @@ import java.util.Optional;
 
 public interface StationRepository extends JpaRepository<Stations, Integer> {
 
-    @Query("SELECT s FROM Stations s WHERE ?1 = s.station_name")
+    @Query("SELECT s FROM Stations s WHERE ?1 = s.stationName")
     Optional<Stations> findByName(String name);
 
     @Modifying
     @Transactional
-    @Query("DELETE FROM Stations s where s.station_name = :name")
+    @Query("DELETE FROM Stations s where s.stationName = :name")
     void deleteByName(@Param("name") String name);
 
    /* @Query("SELECT s FROM Stations s WHERE ?1 = s.stationOrder AND ?2 = s.route")

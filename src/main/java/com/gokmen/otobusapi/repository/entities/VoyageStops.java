@@ -1,36 +1,29 @@
 package com.gokmen.otobusapi.repository.entities;
 
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "stations")
-public class Stations {
-
+@Table
+public class VoyageStops {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private int stationId;
+    private int voyageStopsId;
 
-    private String stationName;
+    @ManyToOne
+    private Voyages voyages;
+    @ManyToOne
+    private RouteStops routeStops;
 
-    private String city;
-
-    private String district;
-
-    private String address;
-
-    private boolean active;
-
+    private LocalDateTime boardingAllowed;
+    private LocalDateTime departureAllowed;
 }
-

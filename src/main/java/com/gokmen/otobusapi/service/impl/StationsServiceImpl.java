@@ -26,9 +26,8 @@ public class StationsServiceImpl implements StationsService {
     @Override
     public void updateStation(String name, Stations stations) {
         stationRepository.findByName(name).ifPresent(stations1 -> {
-            stations1.setStation_name(stations.getStation_name());
+            stations1.setStationName(stations.getStationName());
             stations1.setAddress(stations.getAddress());
-            stations1.setStationOrder(stations.getStationOrder());
             stationRepository.save(stations1);
         });
     }
@@ -36,9 +35,8 @@ public class StationsServiceImpl implements StationsService {
     @Override
     public void updateStationById(int id, Stations stations) {
         stationRepository.findById(id).ifPresent(stations1 -> {
-            stations1.setStation_name(stations.getStation_name());
+            stations1.setStationName(stations.getStationName());
             stations1.setAddress(stations.getAddress());
-            stations1.setStationOrder(stations.getStationOrder());
             stationRepository.save(stations1);
         });
     }

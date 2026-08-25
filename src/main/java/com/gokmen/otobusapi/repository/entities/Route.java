@@ -1,6 +1,7 @@
 package com.gokmen.otobusapi.repository.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,9 +23,19 @@ public class Route {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
 
-    private String RouteNo;
+    private String routeNo; //Code
 
-    @ManyToMany(mappedBy = "route", cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH}, fetch = FetchType.LAZY)
+    private String routeName;
+
+    private String description;
+
+    private boolean active;
+
+    @OneToMany(mappedBy = "route", fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<RouteStops> routeStops;
+
+    /*@ManyToMany(mappedBy = "route", cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH}, fetch = FetchType.LAZY)
     private List<Stations> stations;
 
     @JsonIgnore
@@ -37,7 +48,7 @@ public class Route {
 
     private Date startDate;
 
-    private Date endDate;
+    private Date endDate;*/
 
 
 }

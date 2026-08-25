@@ -1,10 +1,8 @@
 package com.gokmen.otobusapi.repository.entities;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -14,23 +12,19 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-@Table(name = "stations")
-public class Stations {
+@Table
+public class OrderList {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private int stationId;
+    private int id;
 
-    private String stationName;
+    @ManyToMany
+    private List<Urun> uruns;
 
-    private String city;
+    @JsonIgnore
+    private int subTotalPrice;
 
-    private String district;
-
-    private String address;
-
-    private boolean active;
-
+    @JsonIgnore
+    private int orderPrice;
 }
-

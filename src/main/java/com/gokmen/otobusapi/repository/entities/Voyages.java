@@ -1,12 +1,15 @@
 package com.gokmen.otobusapi.repository.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.gokmen.otobusapi.repository.entities.enums.VoyageStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -22,37 +25,21 @@ public class Voyages {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int voyageId;
 
-    private String voyageNo;
-
-    private String voyageName;
+    private String code;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
     private Route routes;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "voyageNo", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Travellers> traveler;
+    @ManyToOne
+    private Buss buss;
 
-    /*@JsonIgnore
-    @ManyToMany(cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH}, fetch = FetchType.LAZY, mappedBy = "stationOrder")
-    private List<Stations> firstStation; // atamaları yap
+    private LocalDateTime departureAt;
+    private LocalDateTime arrivalAt;
 
-    @JsonIgnore
-    @ManyToMany(cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH}, fetch = FetchType.LAZY, mappedBy = "stationOrder")
-    private List<Stations> lastStation;*/
+    private BigDecimal basePrice;
+    private VoyageStatus status;
 
-    @JsonIgnore
-    private int firstStation;
-
-    @JsonIgnore
-    private  int lastStation;
-
-    private Date startDate;
-
-    private Date endDate;
-
-    private int voyagePrice;
-
-
+    @OneToMany(mappedBy = "voyages")
+    List<VoyageStops> voyageStops;
 }

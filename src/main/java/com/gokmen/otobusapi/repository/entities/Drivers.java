@@ -25,10 +25,19 @@ public class Drivers {
 
     private String driverSurname;
 
-    @JsonIgnore
-    @ManyToMany(fetch = FetchType.LAZY,cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH})
-    @JoinTable(name = "driver_buss_id", joinColumns = @JoinColumn(name = "driver_id"), inverseJoinColumns = @JoinColumn(name = "buss_id"))
-    private List<Buss> busId;
+    private String licenseNumber;
 
-    private int busNo;
+    private String phoneNumber;
+
+    private boolean active;
+
+    @OneToMany
+    private List<VoyageDriver> voyageDrivers;
+
+
+//    @JsonIgnore
+//    @ManyToMany(fetch = FetchType.LAZY,cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH})
+//    @JoinTable(name = "driver_buss_id", joinColumns = @JoinColumn(name = "driver_id"), inverseJoinColumns = @JoinColumn(name = "buss_id"))
+//    private List<Buss> busId;
+
 }
