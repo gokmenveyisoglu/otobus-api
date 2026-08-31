@@ -9,10 +9,10 @@ import java.util.Optional;
 
 public interface BussRepository extends JpaRepository<Buss, Integer> {
 
-    @Query("SELECT b FROM Buss b WHERE ?1 = b.number_plate")
+    @Query("SELECT b FROM Buss b WHERE ?1 = b.numberPlate")
     Optional<Buss> findByPlateNumber(String plateNumber);
 
-    @Query("SELECT b.travellers FROM Buss b WHERE ?1 = b.number_plate")
+    @Query("SELECT b.travellers FROM Buss b WHERE ?1 = b.numberPlate")
     Optional<Travellers> findAllTravellersByPlateNumber(String plateNumber);
 
 

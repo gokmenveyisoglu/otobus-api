@@ -26,34 +26,31 @@ public class TravellersServiceImpl implements TravellersService {
     @Override
     public void setTraveller(String voyageId, int busNo, int seatNo, boolean foreign, Travellers travellers) {
         voyagesRepository.findByNo(voyageId).ifPresent(voyages -> {
-            if (bussRepository.findById(busNo).stream().allMatch(buss -> buss.getMax_traveller() >= seatNo && seatNo >0)) {
+            if (bussRepository.findById(busNo).stream().allMatch(buss -> buss.getMaxTraveller() >= seatNo && seatNo >0)) {
                 if (!foreign) {
 
-                    if (travellers.getIndentityNumber() != null || travellers.getIndentityNumber().length() == 11) {
+                    if (travellers.getIdentityNumber() != null || travellers.getIdentityNumber().length() == 11) {
                         if (validId(travellers)) {
 
                             String first;
                             String midlle;
                             String last;
 
-                            first = travellers.getIndentityNumber().substring(0, 2);
+                            first = travellers.getIdentityNumber().substring(0, 2);
                             midlle = "*******";
-                            last = travellers.getIndentityNumber().substring(9);
+                            last = travellers.getIdentityNumber().substring(9);
 
-                            boolean samevoyage;
 
-                            travellers.setFirstStation(voyages.getFirstStation());
-                            travellers.setLastStation(voyages.getLastStation());
 
                             if (!travellerRepository.findAll().isEmpty()) {
                                 travellerRepository.findAll().forEach(travellers1 -> {
                                     //if (travellers1.getVoyageNo() != travellers.getVoyageNo())
-                                    if (travellers1.getSeat() == seatNo && ((travellers.getLastStation() <= travellers1.getFirstStation() && travellers.getFirstStation() < travellers1.getFirstStation()) || (travellers1.getLastStation() <= travellers.getFirstStation() && travellers1.getLastStation() < travellers.getLastStation()))) { // Aynı sefer girilince Kaydediyor
+                                    if (travellers1.getSeat() == seatNo && ((travellers.getVoyages().getDepartureStation() <= travellers1.getVoyages().getDepartureStation() && travellers.getFirstStation() < travellers1.getFirstStation()) || (travellers1.getLastStation() <= travellers.getFirstStation() && travellers1.getLastStation() < travellers.getLastStation()))) { // Aynı sefer girilince Kaydediyor
                                         travellers.setBus_id(bussRepository.findById(busNo).stream().toList());
                                         //travellers.setBus_id(voyages.getRoutes().getBuss());
                                         travellers.setSeat(seatNo);
                                         travellers.setVoyageNo(voyages);
-                                        travellers.setIndentityNumber(first + midlle + last);
+                                        travellers.setIdentityNumber(first + midlle + last);
                                         travellers.setTravelStart(voyages.getStartDate());
                                         travellers.setTravelEnd(voyages.getEndDate());
                                         travellerRepository.save(travellers);
@@ -62,7 +59,7 @@ public class TravellersServiceImpl implements TravellersService {
                                         //travellers.setBus_id(voyages.getRoutes().getBuss());
                                         travellers.setSeat(seatNo);
                                         travellers.setVoyageNo(voyages);
-                                        travellers.setIndentityNumber(first + midlle + last);
+                                        travellers.setIdentityNumber(first + midlle + last);
                                         travellers.setTravelStart(voyages.getStartDate());
                                         travellers.setTravelEnd(voyages.getEndDate());
                                         travellerRepository.save(travellers);
@@ -73,7 +70,7 @@ public class TravellersServiceImpl implements TravellersService {
                                 //travellers.setBus_id(voyages.getRoutes().getBuss());
                                 travellers.setSeat(seatNo);
                                 travellers.setVoyageNo(voyages);
-                                travellers.setIndentityNumber(first + midlle + last);
+                                travellers.setIdentityNumber(first + midlle + last);
                                 travellers.setTravelStart(voyages.getStartDate());
                                 travellers.setTravelEnd(voyages.getEndDate());
                                 travellerRepository.save(travellers);                                                       //Reflect hatası creat-drop at
@@ -92,7 +89,7 @@ public class TravellersServiceImpl implements TravellersService {
                                 travellers.setForeign(true);
                                 travellers.setSeat(seatNo);
                                 travellers.setVoyageNo(voyages);
-                                travellers.setIndentityNumber("Foreigner");
+                                travellers.setIdentityNumber("Foreigner");
                                 travellers.setTravelStart(voyages.getStartDate());
                                 travellers.setTravelEnd(voyages.getEndDate());
                                 travellerRepository.save(travellers);
@@ -102,7 +99,7 @@ public class TravellersServiceImpl implements TravellersService {
                                 travellers.setForeign(true);
                                 travellers.setSeat(seatNo);
                                 travellers.setVoyageNo(voyages);
-                                travellers.setIndentityNumber("Foreigner");
+                                travellers.setIdentityNumber("Foreigner");
                                 travellers.setTravelStart(voyages.getStartDate());
                                 travellers.setTravelEnd(voyages.getEndDate());
                                 travellerRepository.save(travellers);
@@ -114,7 +111,7 @@ public class TravellersServiceImpl implements TravellersService {
                         travellers.setForeign(true);
                         travellers.setSeat(seatNo);
                         travellers.setVoyageNo(voyages);
-                        travellers.setIndentityNumber("Foreigner");
+                        travellers.setIdentityNumber("Foreigner");
                         travellers.setTravelStart(voyages.getStartDate());
                         travellers.setTravelEnd(voyages.getEndDate());
                         travellerRepository.save(travellers);
@@ -128,7 +125,7 @@ public class TravellersServiceImpl implements TravellersService {
         int[] numbers = new int[11];
 
         for (int i = 0; i < 11; i++) {
-            numbers[i] = Integer.parseInt(traveller.getIndentityNumber().substring(i, (i + 1)));
+            numbers[i] = Integer.parseInt(traveller.getIdentityNumber().substring(i, (i + 1)));
         }
         boolean condition1 = (numbers[0] + numbers[1] + numbers[2] + numbers[3] + numbers[4] + numbers[5] + numbers[6] + numbers[7] + numbers[8] + numbers[9]) % 10 == numbers[10];
         boolean condition2 = (((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 7) + ((numbers[1] + numbers[3] + numbers[5] + numbers[7]) * 9)) % 10 == numbers[9];

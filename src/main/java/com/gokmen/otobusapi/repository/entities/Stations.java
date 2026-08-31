@@ -22,7 +22,7 @@ public class Stations {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int stationId;
 
-    private String station_name;
+    private String stationName;
 
     private String address;
 
@@ -30,13 +30,8 @@ public class Stations {
     @ManyToMany
     private List<Voyages> stationOrder;*/
 
-    private int stationOrder;
-
-
     @ManyToMany(mappedBy = "stations", cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH}, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Route> route;
-
-
 }
 

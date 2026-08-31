@@ -25,7 +25,7 @@ public class DriverServiceImpl implements DriverService {
     @Override
     public void saveDriver(int bus_id, Drivers drivers) {
         bussRepository.findById(bus_id).ifPresent(bus -> {
-            if (bus.getDriver_id().stream().noneMatch(x -> x.getDriverName().equals(drivers.getDriverName()))) {
+            if (bus.getDriverId().stream().noneMatch(x -> x.getDriverName().equals(drivers.getDriverName()))) {
                 drivers.setBusId(Stream.of(bus).toList());
                 drivers.setBusNo(bus_id);
                 driversRepository.save(drivers);
@@ -41,7 +41,7 @@ public class DriverServiceImpl implements DriverService {
             drivers.getBusId().forEach(buss -> {
                 List<Drivers> driversList = new ArrayList<>();
                 driversList.add(drivers);
-                buss.setDriver_id(driversList);
+                buss.setDriverId(driversList);
             });
             drivers1.setBusId(drivers.getBusId());
             drivers1.setBusNo(drivers.getBusNo());

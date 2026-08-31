@@ -22,7 +22,7 @@ public class Route {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private int id;
 
-    private String RouteNo;
+    private String routeNo;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable( name = "station_route", joinColumns = @JoinColumn(name = "route_id"), inverseJoinColumns = @JoinColumn(name = "stations_station_id"))
@@ -34,7 +34,7 @@ public class Route {
     private List<Buss> buss;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "routes", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "route", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Voyages> voyages;
 
     private Date startDate;
@@ -42,6 +42,4 @@ public class Route {
     private Date endDate;
 
     private boolean active;
-
-
 }

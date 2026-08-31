@@ -7,9 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
-import java.util.List;
-
 @Entity
 @Data
 @AllArgsConstructor
@@ -20,7 +17,7 @@ public class Travellers {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private int traveller_id;
+    private int travellerId;
 
     private String travellerName;
 
@@ -31,35 +28,23 @@ public class Travellers {
     @JsonIgnore
     private boolean isForeign;
 
-    private String indentityNumber;
+    private String identityNumber;
 
     @JsonIgnore
-    @ManyToMany(cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH}, fetch = FetchType.LAZY) // ManyToOne? || ManyToMany
-    private List<Buss> bus_id;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "voyage_id", nullable = false)
+    private Voyages voyages;
 
     @JsonIgnore
     private int seat;
 
     @JsonIgnore
-    @ManyToOne(fetch = FetchType.EAGER)
-    private Voyages voyageNo;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "boarding_station_id", nullable = false)
+    private Stations boardingStation;
 
     @JsonIgnore
-    private int firstStation;
-
-    @JsonIgnore
-    private int lastStation;
-
-    @JsonIgnore
-    private Date travelStart;
-
-    @JsonIgnore
-    private Date travelEnd;
-
-    /*@JsonIgnore
-    @ManyToMany(cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH})
-    private List<Voyages> voyage_id;*/
-
-                                                            //Voyage ataması ekle
-
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "drop_off_station_id", nullable = false)
+    private Stations dropOffStation;
 }

@@ -16,25 +16,21 @@ public class Buss {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private int bus_id;
+    private int busId;
 
-    private int max_traveller;
+    private int maxTraveller;
 
     @JsonIgnore
     @ManyToMany(cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH})
     @JoinTable(name = "driver_buss_id", joinColumns = @JoinColumn(name = "buss_id"), inverseJoinColumns = @JoinColumn(name = "driver_id"))
-    private List<Drivers> driver_id;
+    private List<Drivers> driverId;
 
-    private String number_plate;
+    private String numberPlate;
 
     @JsonIgnore
     @ManyToOne(cascade = CascadeType.ALL)
     //@JsonBackReference
     private SchemaHeader schemaHeader; // header no
-
-    @JsonIgnore
-    @ManyToMany
-    private List<Travellers> travellers; //traveller no
 
     @JsonIgnore
     @ManyToOne
@@ -44,25 +40,17 @@ public class Buss {
 
     public static ResponseBus toResponse(Buss buss) {
         return new ResponseBus(
-                buss.getBus_id(),
-                buss.getMax_traveller(),
-                buss.getNumber_plate(),
+                buss.getBusId(),
+                buss.getMaxTraveller(),
+                buss.getNumberPlate(),
                 buss.getSchemaHeader(),
                 buss.getRoute(),
                 buss.isActive()
         );
     }
 
-    public int getBus_id() {
-        return bus_id;
-    }
-
-    public List<Travellers> getTravellers() {
-        return travellers;
-    }
-
-    public void setTravellers(List<Travellers> travellers) {
-        this.travellers = travellers;
+    public int getBusId() {
+        return busId;
     }
 
     public SchemaHeader getSchemaHeader() {
@@ -73,32 +61,32 @@ public class Buss {
         this.schemaHeader = schemaHeader;
     }
 
-    public String getNumber_plate() {
-        return number_plate;
+    public String getNumberPlate() {
+        return numberPlate;
     }
 
-    public void setNumber_plate(String number_plate) {
-        this.number_plate = number_plate;
+    public void setNumberPlate(String number_plate) {
+        this.numberPlate = number_plate;
     }
 
-    public List<Drivers> getDriver_id() {
-        return driver_id;
+    public List<Drivers> getDriverId() {
+        return driverId;
     }
 
-    public void setDriver_id(List<Drivers> driver_id) {
-        this.driver_id = driver_id;
+    public void setDriverId(List<Drivers> driver_id) {
+        this.driverId = driver_id;
     }
 
-    public int getMax_traveller() {
-        return max_traveller;
+    public int getMaxTraveller() {
+        return maxTraveller;
     }
 
-    public void setMax_traveller(int max_traveller) {
-        this.max_traveller = max_traveller;
+    public void setMaxTraveller(int max_traveller) {
+        this.maxTraveller = max_traveller;
     }
 
     public void increaseMaxTraveller(){
-        this.max_traveller++;
+        this.maxTraveller++;
     }
 
     public Route getRoute() {

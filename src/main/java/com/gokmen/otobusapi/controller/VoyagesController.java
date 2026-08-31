@@ -1,6 +1,7 @@
 package com.gokmen.otobusapi.controller;
 
 import com.gokmen.otobusapi.repository.entities.Voyages;
+import com.gokmen.otobusapi.repository.record.Voyage.ResponseVoyage;
 import com.gokmen.otobusapi.service.VoyagesService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
@@ -20,14 +21,18 @@ public class VoyagesController {
         this.voyagesService = voyagesService;
     }
 
-    @PostMapping("route/{rname}/first-station/{forder}/{loder}")
-    public void setVoyage(@PathVariable("rname") String routeName, @PathVariable("forder") int firstStation, @PathVariable("loder") int lastStation, @RequestBody Voyages voyages){
-        voyagesService.setVoyage(routeName, firstStation, lastStation, voyages);
+    @PostMapping()
+    public ResponseVoyage setVoyage(@RequestBody Voyages voyages){
+        return voyagesService.setVoyage(voyages);
     }
 
     @PutMapping("{no}")
     public void updateVoyage(@PathVariable("no") String voyageNo, @RequestBody Voyages voyages){
         voyagesService.updateVoyage(voyageNo, voyages);
+    }
+    @PatchMapping("{voyageid}/deactivate")
+    public void deactivateVoyage(@PathVariable("voyageid") int voyageId) {
+        voyagesService.deactivateVoyage(voyageId);
     }
     @GetMapping()
     public List<Voyages> getAllVoyages(){
@@ -37,4 +42,5 @@ public class VoyagesController {
     public Optional<Voyages> getByNo(@PathVariable("no") String voyageNo){
         return voyagesService.findByNo(voyageNo);
     }
+
 }

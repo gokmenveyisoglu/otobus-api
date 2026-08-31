@@ -43,7 +43,7 @@ public class BussSerciveImpl implements BussService {
 
         Buss buss = new Buss();
 
-        buss.setNumber_plate(request.number_plate().trim());
+        buss.setNumberPlate(request.number_plate().trim());
         buss.setSchemaHeader(schemaHeader);
         buss.setRoute(route);
         buss.setActive(true);
@@ -51,7 +51,7 @@ public class BussSerciveImpl implements BussService {
         int capacity = schemaHeader.getSchemaDetails().stream().mapToInt(detail ->
                 seatCount(detail.getColumn1()) + seatCount(detail.getColumn2()) + seatCount(detail.getColumn4()) + seatCount(detail.getColumn5())).sum();
 
-        buss.setMax_traveller(capacity);
+        buss.setMaxTraveller(capacity);
 
         Buss savedBuss = bussRepository.save(buss);
         return Buss.toResponse(savedBuss);
@@ -62,11 +62,11 @@ public class BussSerciveImpl implements BussService {
     public ResponseBus updateBus(int busId, UpdateBus updateBus) {
         Buss buss = bussRepository.findById(busId).orElseThrow(() -> new RuntimeException("Bus not found" + busId));
 
-        buss.setNumber_plate(updateBus.number_plate());
+        buss.setNumberPlate(updateBus.number_plate());
         buss.setSchemaHeader(schemaHeaderRepository.findById(updateBus.schema_header_id()).orElseThrow(() -> new RuntimeException("Seat Layout nor found" + updateBus.schema_header_id())));
         buss.setRoute(routeRepository.findById(updateBus.route_id()).orElseThrow(() -> new RuntimeException("route not found" + updateBus.route_id())));
 
-        buss.setMax_traveller(0);
+        buss.setMaxTraveller(0);
         buss.getSchemaHeader().getSchemaDetails().forEach(schemaDetail -> {
             if (schemaDetail.getColumn1() != 0)
                 buss.increaseMaxTraveller();
