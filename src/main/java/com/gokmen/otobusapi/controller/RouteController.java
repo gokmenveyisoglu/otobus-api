@@ -34,6 +34,17 @@ public class RouteController {
     public void updateRouteByName(@PathVariable("rname") String routeName, @RequestBody Route route){
         routeService.updateRouteByName(routeName, route);
     }
+
+    @PutMapping("/id/{rid}")
+    public void updateRouteById(@PathVariable("rid") int roureId, @RequestBody Route route) {
+        routeService.updateRouteById(roureId, route);
+    }
+
+    @PatchMapping("/{rid}/deactivate")
+    public void deactivateRouteById(@PathVariable("rid") int routeId) {
+        routeService.deactivateRouteById(routeId); //Look if it's wrong to send a route for deactivation. I prefer to not send a route object.
+    }
+
     @GetMapping()
     public List<Route> getAllRoutes(){
         return routeService.findAllRoutes();

@@ -32,7 +32,8 @@ public class Stations {
 
     private int stationOrder;
 
-    @ManyToMany
+
+    @ManyToMany(mappedBy = "stations", cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.REFRESH}, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<Route> route;
 

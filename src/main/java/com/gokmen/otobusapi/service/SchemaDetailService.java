@@ -1,16 +1,17 @@
 package com.gokmen.otobusapi.service;
 
-import com.gokmen.otobusapi.repository.entities.SchemaDetail;
-import com.gokmen.otobusapi.repository.entities.SchemaHeader;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.CreateSchemaDetail;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.ResponseSchemaDetail;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.UpdateSchemaDetail;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface SchemaDetailService {
 
-    void saveSchemaDetail(int headerId, List<SchemaDetail> schemaDetail);
-    Optional<SchemaDetail> findById(int id);
-    List<SchemaDetail> findAll();
-    void updateSchemaDetail(int detailId, SchemaDetail schemaDetail);
+    List<ResponseSchemaDetail> saveSchemaDetail(int headerId, List<CreateSchemaDetail> schemaDetail);
+    ResponseSchemaDetail findById(int id);
+    List<ResponseSchemaDetail> findAll();
+    List<ResponseSchemaDetail> findAllByHeaderId(int headerId);
+    ResponseSchemaDetail updateSchemaDetail(int detailId, UpdateSchemaDetail schemaDetail);
 
 }

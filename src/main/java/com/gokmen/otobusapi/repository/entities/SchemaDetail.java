@@ -2,6 +2,7 @@ package com.gokmen.otobusapi.repository.entities;
 
 import com.fasterxml.jackson.annotation.*;
 import com.gokmen.otobusapi.repository.record.SchemaDetail.CreateSchemaDetail;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.ResponseSchemaDetail;
 import com.gokmen.otobusapi.repository.record.SchemaDetail.UpdateSchemaDetail;
 import jakarta.persistence.*;
 import lombok.*;
@@ -42,21 +43,31 @@ public class SchemaDetail {
 
     public static SchemaDetail fromCreate(CreateSchemaDetail createSchemaDetail){
         SchemaDetail schemaDetail = new SchemaDetail();
+
         schemaDetail.setColumn1(createSchemaDetail.column1());
         schemaDetail.setColumn2(createSchemaDetail.column2());
         schemaDetail.setColumn4(createSchemaDetail.column4());
         schemaDetail.setColumn5(createSchemaDetail.column5());
-        schemaDetail.setSchemaHeader(createSchemaDetail.schemaHeader());
+
         return schemaDetail;
     }
 
-    public static SchemaDetail fromUpdate(UpdateSchemaDetail updateSchemaDetail){
-        SchemaDetail schemaDetail = new SchemaDetail();
-        schemaDetail.setColumn1(updateSchemaDetail.column1());
-        schemaDetail.setColumn2(updateSchemaDetail.column2());
-        schemaDetail.setColumn4(updateSchemaDetail.column4());
-        schemaDetail.setColumn5(updateSchemaDetail.column5());
-        return schemaDetail;
+    public void  fromUpdate(UpdateSchemaDetail updateSchemaDetail){
+        setColumn1(updateSchemaDetail.column1());
+        setColumn2(updateSchemaDetail.column2());
+        setColumn4(updateSchemaDetail.column4());
+        setColumn5(updateSchemaDetail.column5());
+    }
+
+    public static ResponseSchemaDetail toResponse(SchemaDetail schemaDetail) {
+        return new ResponseSchemaDetail(
+                schemaDetail.getId(),
+                schemaDetail.getColumn1(),
+                schemaDetail.getColumn2(),
+                schemaDetail.getColumn3(),
+                schemaDetail.getColumn4(),
+                schemaDetail.getColumn5()
+        );
     }
 
 

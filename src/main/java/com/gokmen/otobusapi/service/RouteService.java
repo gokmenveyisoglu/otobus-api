@@ -10,6 +10,8 @@ public interface RouteService {
     void setRoute(Route route);
     void addStation(int routeId, int station);
     void updateRouteByName(String routeName, Route route);
+    void updateRouteById(int routeId, Route route);
+    void deactivateRouteById(int routeId);
     List<Route> findAllRoutes();
     Optional<Route> findRouteByName(String routeName);
 

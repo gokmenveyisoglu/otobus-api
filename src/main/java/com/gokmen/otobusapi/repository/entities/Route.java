@@ -24,7 +24,9 @@ public class Route {
 
     private String RouteNo;
 
-    @ManyToMany(mappedBy = "route", cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH}, fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable( name = "station_route", joinColumns = @JoinColumn(name = "route_id"), inverseJoinColumns = @JoinColumn(name = "stations_station_id"))
+    @OrderColumn(name = "station_order")
     private List<Stations> stations;
 
     @JsonIgnore
@@ -38,6 +40,8 @@ public class Route {
     private Date startDate;
 
     private Date endDate;
+
+    private boolean active;
 
 
 }

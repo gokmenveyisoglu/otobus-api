@@ -1,4 +1,8 @@
 package com.gokmen.otobusapi.repository.record.SchemaHeader;
 
-public record CreateSchemaHeader(String name, String description) {
+import com.gokmen.otobusapi.repository.record.SchemaDetail.CreateSchemaDetail;
+
+import java.util.List;
+
+public record CreateSchemaHeader(String name, String description, List<CreateSchemaDetail> schemaDetails) {
 }

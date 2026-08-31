@@ -3,7 +3,7 @@ package com.gokmen.otobusapi.controller;
 
 import com.gokmen.otobusapi.repository.record.SchemaHeader.CreateSchemaHeader;
 import com.gokmen.otobusapi.repository.entities.SchemaDetail;
-import com.gokmen.otobusapi.repository.entities.SchemaHeader;
+import com.gokmen.otobusapi.repository.record.SchemaHeader.ResponseSchemaHeader;
 import com.gokmen.otobusapi.repository.record.SchemaHeader.UpdateSchemaHeader;
 import com.gokmen.otobusapi.service.SchemaHeaderService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,24 +23,34 @@ public class SchemaHeaderController {
         this.schemaHeaderService = schemaHeaderService;
     }
 
-    @PostMapping()
-    public void saveSchemaHeader(@RequestBody CreateSchemaHeader createSchemaHeader){
-
-        SchemaHeader schemaHeader = SchemaHeader.fromCreate(createSchemaHeader);
-        schemaHeaderService.saveSchemaHeader(schemaHeader);
+//    @PostMapping()
+//    public void saveSchemaHeader(@RequestBody CreateSchemaHeader createSchemaHeader){
+//
+//        SchemaHeader schemaHeader = SchemaHeader.fromCreate(createSchemaHeader);
+//        schemaHeaderService.saveSchemaHeader(schemaHeader);
+//    }
+    @PostMapping
+    public ResponseSchemaHeader saveSchemaHeader(@RequestBody CreateSchemaHeader createSchemaHeader){
+        return schemaHeaderService.saveSchemaHeader(createSchemaHeader);
     }
     @PutMapping("{id}")
-    public void updateHeader(@PathVariable("id") int headerId, @RequestBody UpdateSchemaHeader updateSchemaHeader){
-        SchemaHeader schemaHeader = SchemaHeader.fromUpdate(updateSchemaHeader);
-        schemaHeaderService.updateSchemaHeader(headerId, schemaHeader);
+    public ResponseSchemaHeader updateHeader(@PathVariable("id") int headerId, @RequestBody UpdateSchemaHeader updateSchemaHeader){
+        return schemaHeaderService.updateSchemaHeader(headerId, updateSchemaHeader);
+    }
+    @PatchMapping("/{shi}/deactivate")
+    public ResponseSchemaHeader deactivateById(@PathVariable("shi") int headerId) {
+        return schemaHeaderService.deactivateById(headerId);
     }
     @GetMapping()
-    public List<SchemaHeader> findAll(){
+    public List<ResponseSchemaHeader> findAll(){
         return schemaHeaderService.findAll();
     }
-    @GetMapping("{hname}")
-    public Optional<SchemaHeader> findByName(@PathVariable("hname") String name){
-
+    @GetMapping("id/{id}")
+    public ResponseSchemaHeader findById(@PathVariable("id") int headerId) {
+        return schemaHeaderService.getById(headerId);
+    }
+    @GetMapping("name/{hname}")
+    public ResponseSchemaHeader findByName(@PathVariable("hname") String name){
         return schemaHeaderService.findByName(name);
     }
     @GetMapping("{header}/detail")

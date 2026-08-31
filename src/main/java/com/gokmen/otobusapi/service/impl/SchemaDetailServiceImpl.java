@@ -3,12 +3,15 @@ package com.gokmen.otobusapi.service.impl;
 import com.gokmen.otobusapi.repository.SchemaDetailRepository;
 import com.gokmen.otobusapi.repository.SchemaHeaderRepository;
 import com.gokmen.otobusapi.repository.entities.SchemaDetail;
+import com.gokmen.otobusapi.repository.entities.SchemaHeader;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.CreateSchemaDetail;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.ResponseSchemaDetail;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.UpdateSchemaDetail;
 import com.gokmen.otobusapi.service.SchemaDetailService;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class SchemaDetailServiceImpl implements SchemaDetailService {
@@ -21,33 +24,44 @@ public class SchemaDetailServiceImpl implements SchemaDetailService {
     }
 
     @Override
-    public void saveSchemaDetail(int headerId, List<SchemaDetail> schemaDetail) {
+    @Transactional
+    public List<ResponseSchemaDetail> saveSchemaDetail(int headerId, List<CreateSchemaDetail> schemaDetail) {
+        SchemaHeader schemaHeader = schemaHeaderRepository.findById(headerId).orElseThrow(() -> new RuntimeException("Seat layout not found: " + headerId));
 
-        schemaHeaderRepository.findById(headerId).ifPresent(schemaHeader -> schemaDetailRepository.saveAll(schemaDetail.stream().map(x -> { // map yerine peek e bak
-            x.setSchemaHeader(schemaHeader);
-            return x;
-        }).toList()));
+        List<SchemaDetail> schemaDetails = schemaDetail.stream().map(request -> {
+            SchemaDetail detail = SchemaDetail.fromCreate(request);
+            detail.setSchemaHeader(schemaHeader);
+            return detail;
+        }).toList();
+
+        return schemaDetailRepository.saveAll(schemaDetails).stream().map(SchemaDetail::toResponse).toList();
 
     }
 
     @Override
-    public Optional<SchemaDetail> findById(int id) {
-        return id <= 0 ? Optional.empty() : schemaDetailRepository.findById(id);
+    @Transactional(readOnly = true)
+    public ResponseSchemaDetail findById(int id) {
+        SchemaDetail schemaDetail = schemaDetailRepository.findById(id).orElseThrow(() -> new RuntimeException("Seat row not found: " + id));
+        return SchemaDetail.toResponse(schemaDetail);
     }
 
     @Override
-    public List<SchemaDetail> findAll() {
-        return schemaDetailRepository.findAll();
+    @Transactional(readOnly = true)
+    public List<ResponseSchemaDetail> findAll() {
+        return schemaDetailRepository.findAll().stream().map(SchemaDetail::toResponse).toList();
     }
 
     @Override
-    public void updateSchemaDetail(int detailId, SchemaDetail schemaDetail) {
-        schemaDetailRepository.findById(detailId).ifPresent(schemaDetail1 -> {                                          //ifPresentOrElse yap
-            schemaDetail1.setColumn1(schemaDetail.getColumn1());
-            schemaDetail1.setColumn2(schemaDetail.getColumn2());
-            schemaDetail1.setColumn4(schemaDetail.getColumn4());
-            schemaDetail1.setColumn5(schemaDetail.getColumn5());
-            schemaDetailRepository.save(schemaDetail1);
-        });
+    public List<ResponseSchemaDetail> findAllByHeaderId(int headerId) {
+        return schemaDetailRepository.findAllBySchemaHeader_Id(headerId).stream().map(SchemaDetail::toResponse).toList();
+    }
+
+    @Override
+    @Transactional
+    public ResponseSchemaDetail updateSchemaDetail(int detailId, UpdateSchemaDetail request) {
+        SchemaDetail schemaDetail = schemaDetailRepository.findById(detailId).orElseThrow(() -> new RuntimeException("Seat row bot found: " + detailId));
+
+        schemaDetail.fromUpdate(request);
+        return SchemaDetail.toResponse(schemaDetail);
     }
 }

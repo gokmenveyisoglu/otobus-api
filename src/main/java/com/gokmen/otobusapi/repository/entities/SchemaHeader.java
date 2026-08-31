@@ -3,9 +3,9 @@ package com.gokmen.otobusapi.repository.entities;
 import com.fasterxml.jackson.annotation.*;
 import com.gokmen.otobusapi.repository.record.SchemaHeader.CreateSchemaHeader;
 import com.gokmen.otobusapi.repository.record.SchemaHeader.ResponseSchemaHeader;
-import com.gokmen.otobusapi.repository.record.SchemaHeader.UpdateSchemaHeader;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -26,14 +26,45 @@ public class SchemaHeader {
 
     private  String description;
 
-
-    @OneToMany(mappedBy = "schemaHeader", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "schemaHeader", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference
-    private List<SchemaDetail> schemaDetails;
+    @OrderColumn(name = "row_order")
+    private List<SchemaDetail> schemaDetails = new ArrayList<>();
 
     @OneToMany(mappedBy = "schemaHeader", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Buss> buss;
+    private List<Buss> buss = new ArrayList<>();
 
+    private boolean active = true;
+
+    public void addSchemaDetail(SchemaDetail schemaDetail) {
+        schemaDetails.add(schemaDetail);
+        schemaDetail.setSchemaHeader(this);
+    }
+
+    public void replaceSchemaDetail(List<SchemaDetail> newSchemaDetails) {
+        schemaDetails.clear();
+        newSchemaDetails.forEach(this::addSchemaDetail);
+    }
+
+    public static SchemaHeader fromCreate(CreateSchemaHeader createSchemaHeader){
+        SchemaHeader schemaHeader = new SchemaHeader();
+
+        schemaHeader.setName(createSchemaHeader.name());
+        schemaHeader.setDescription(createSchemaHeader.description());
+        createSchemaHeader.schemaDetails().stream().map(SchemaDetail::fromCreate).forEach(schemaHeader::addSchemaDetail);
+
+        return schemaHeader;
+    }
+
+    public static ResponseSchemaHeader toResponse(SchemaHeader schemaHeader){
+        return new ResponseSchemaHeader(
+                schemaHeader.getId(),
+                schemaHeader.getName(),
+                schemaHeader.getDescription(),
+                schemaHeader.getSchemaDetails().stream().map(SchemaDetail::toResponse).toList(),
+                schemaHeader.isActive()
+        );
+    }
 
     public int getId() {
         return this.id;
@@ -71,24 +102,11 @@ public class SchemaHeader {
         this.buss = buss;
     }
 
-
-
-
-    public static SchemaHeader fromCreate(CreateSchemaHeader createSchemaHeader){
-        SchemaHeader schemaHeader = new SchemaHeader();
-        schemaHeader.setName(createSchemaHeader.name());
-        schemaHeader.setDescription(createSchemaHeader.description());
-        return schemaHeader;
+    public boolean isActive() {
+        return active;
     }
-    public static SchemaHeader fromUpdate(UpdateSchemaHeader updateSchemaHeader){
-        SchemaHeader schemaHeader = new SchemaHeader();
-        schemaHeader.setName(updateSchemaHeader.name());
-        schemaHeader.setDescription(updateSchemaHeader.description());
-        schemaHeader.setSchemaDetails(updateSchemaHeader.schemaDetails());
-        return schemaHeader;
 
-    }
-    public static ResponseSchemaHeader toResponse(SchemaHeader schemaHeader){
-        return new ResponseSchemaHeader(schemaHeader.getId(), schemaHeader.getName(), schemaHeader.getDescription(), schemaHeader.getSchemaDetails(), schemaHeader.getBuss());
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }

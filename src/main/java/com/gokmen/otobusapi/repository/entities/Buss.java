@@ -1,6 +1,7 @@
 package com.gokmen.otobusapi.repository.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.gokmen.otobusapi.repository.record.Bus.ResponseBus;
 import jakarta.persistence.*;
 
 import java.util.List;
@@ -38,6 +39,19 @@ public class Buss {
     @JsonIgnore
     @ManyToOne
     private Route route;
+
+    private boolean active = true;
+
+    public static ResponseBus toResponse(Buss buss) {
+        return new ResponseBus(
+                buss.getBus_id(),
+                buss.getMax_traveller(),
+                buss.getNumber_plate(),
+                buss.getSchemaHeader(),
+                buss.getRoute(),
+                buss.isActive()
+        );
+    }
 
     public int getBus_id() {
         return bus_id;
@@ -93,5 +107,13 @@ public class Buss {
 
     public void setRoute(Route route) {
         this.route = route;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }

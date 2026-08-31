@@ -1,6 +1,9 @@
 package com.gokmen.otobusapi.controller;
 
 import com.gokmen.otobusapi.repository.entities.Buss;
+import com.gokmen.otobusapi.repository.record.Bus.CreateBusRequest;
+import com.gokmen.otobusapi.repository.record.Bus.ResponseBus;
+import com.gokmen.otobusapi.repository.record.Bus.UpdateBus;
 import com.gokmen.otobusapi.service.BussService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
@@ -17,20 +20,25 @@ public class BussController {
     BussController(BussService bussService){
         this.bussService = bussService;
     }
-    @PostMapping("header/{hid}/route/{rno}")
-    public void saveBuss(@PathVariable("hid") int header_id,@PathVariable("rno") String routeNo, @RequestBody Buss buss){
-        bussService.saveBuss(header_id, routeNo, buss);
+    @PostMapping()
+    public ResponseBus saveBuss(@RequestBody CreateBusRequest request){
+        return bussService.saveBuss(request);
     }
     @GetMapping()
-    public List<Buss> findAllBuss(){
-        return bussService.findAllBuss();
+    public List<ResponseBus> findAllBuss(){
+        return bussService.findAllBuss().stream().map(Buss::toResponse).toList();
     }
     @GetMapping("plate-number/{plate-number}")
     public Optional<Buss> findByPlateNumber(@PathVariable("plate-number") String plateNumber){
         return bussService.findByPlateNumber(plateNumber);
     }
-    @PutMapping("update-bus-seats-auto/{plate-number}")
-    public void updateBusSeatsAuto(@PathVariable("plate-number") String plateNumber){
-        bussService.updateBusSeatsAuto(plateNumber);
+    @PutMapping("{bid}")
+    public ResponseBus updateBusSeatsAuto(@PathVariable("bid") int busId, @RequestBody UpdateBus bus){
+        return bussService.updateBus(busId, bus);
     }
+    @PatchMapping("{busid}/deactivate")
+    public ResponseBus deactivateBusById(@PathVariable("busid") int busId) {
+        return bussService.deactivateBusById(busId);
+    }
+
 }

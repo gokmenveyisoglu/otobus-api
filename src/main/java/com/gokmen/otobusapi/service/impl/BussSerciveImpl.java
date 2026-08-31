@@ -4,12 +4,17 @@ import com.gokmen.otobusapi.repository.BussRepository;
 import com.gokmen.otobusapi.repository.RouteRepository;
 import com.gokmen.otobusapi.repository.SchemaHeaderRepository;
 import com.gokmen.otobusapi.repository.entities.Buss;
+import com.gokmen.otobusapi.repository.entities.Route;
+import com.gokmen.otobusapi.repository.entities.SchemaHeader;
+import com.gokmen.otobusapi.repository.record.Bus.CreateBusRequest;
+import com.gokmen.otobusapi.repository.record.Bus.ResponseBus;
+import com.gokmen.otobusapi.repository.record.Bus.UpdateBus;
 import com.gokmen.otobusapi.service.BussService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 @Service
 public class BussSerciveImpl implements BussService {
@@ -25,55 +30,65 @@ public class BussSerciveImpl implements BussService {
     }
 
     @Override
-    public void saveBuss(int headerId, String routeNo, Buss buss) {
-        schemaHeaderRepository.findById(headerId).ifPresent(schemaHeader -> {
-            if (schemaHeader.getBuss().stream().noneMatch(x -> x.getNumber_plate().equals(buss.getNumber_plate()))) {
-                buss.setSchemaHeader(schemaHeader);
-                if (schemaHeaderRepository.findById(headerId).isPresent()){
-                    buss.getSchemaHeader().getSchemaDetails().forEach(schemaDetail -> {
-                        if (schemaDetail.getColumn1() != 0)
-                            buss.increaseMaxTraveller();
-                        if (schemaDetail.getColumn2() != 0)
-                            buss.increaseMaxTraveller();
-                        if (schemaDetail.getColumn3() != 0)
-                            buss.increaseMaxTraveller();
-                        if (schemaDetail.getColumn4() != 0)
-                            buss.increaseMaxTraveller();
-                        if (schemaDetail.getColumn5() != 0)
-                            buss.increaseMaxTraveller();
+    @Transactional
+    public ResponseBus saveBuss(CreateBusRequest request) {
 
-                    });
-                }
-                routeRepository.findByNo(routeNo).ifPresent(route -> {
-                    if(route.getRouteNo().equals(routeNo)){                                                                                           //Koşul bul
-                        route.setBuss(Stream.of(buss).toList());
-                        buss.setRoute(route);
-                        bussRepository.save(buss);
-                    }
-                });
-            }
-        });
+        SchemaHeader schemaHeader = schemaHeaderRepository.findById(request.schema_header_id()).orElseThrow(() -> new RuntimeException("Seat layout not found " + request.schema_header_id()));
+
+        Route route = routeRepository.findById(request.route_id()).orElseThrow(() -> new RuntimeException("Route not found " + request.route_id()));
+
+        boolean plateExists = bussRepository.findByPlateNumber(request.number_plate()).isPresent();
+
+        if (plateExists) throw  new RuntimeException("A bus with the same plate number exists");
+
+        Buss buss = new Buss();
+
+        buss.setNumber_plate(request.number_plate().trim());
+        buss.setSchemaHeader(schemaHeader);
+        buss.setRoute(route);
+        buss.setActive(true);
+
+        int capacity = schemaHeader.getSchemaDetails().stream().mapToInt(detail ->
+                seatCount(detail.getColumn1()) + seatCount(detail.getColumn2()) + seatCount(detail.getColumn4()) + seatCount(detail.getColumn5())).sum();
+
+        buss.setMax_traveller(capacity);
+
+        Buss savedBuss = bussRepository.save(buss);
+        return Buss.toResponse(savedBuss);
     }
 
     @Override
-    public void updateBusSeatsAuto(String plateNumber) {
-        bussRepository.findByPlateNumber(plateNumber).ifPresent(buss -> {
-            buss.setMax_traveller(0);
-            buss.getSchemaHeader().getSchemaDetails().forEach(schemaDetail -> {
-                if (schemaDetail.getColumn1() != 0)
-                    buss.increaseMaxTraveller();
-                if (schemaDetail.getColumn2() != 0)
-                    buss.increaseMaxTraveller();
-                if (schemaDetail.getColumn3() != 0)
-                    buss.increaseMaxTraveller();
-                if (schemaDetail.getColumn4() != 0)
-                    buss.increaseMaxTraveller();
-                if (schemaDetail.getColumn5() != 0)
-                    buss.increaseMaxTraveller();
+    @Transactional
+    public ResponseBus updateBus(int busId, UpdateBus updateBus) {
+        Buss buss = bussRepository.findById(busId).orElseThrow(() -> new RuntimeException("Bus not found" + busId));
 
-            });
-            bussRepository.save(buss);
+        buss.setNumber_plate(updateBus.number_plate());
+        buss.setSchemaHeader(schemaHeaderRepository.findById(updateBus.schema_header_id()).orElseThrow(() -> new RuntimeException("Seat Layout nor found" + updateBus.schema_header_id())));
+        buss.setRoute(routeRepository.findById(updateBus.route_id()).orElseThrow(() -> new RuntimeException("route not found" + updateBus.route_id())));
+
+        buss.setMax_traveller(0);
+        buss.getSchemaHeader().getSchemaDetails().forEach(schemaDetail -> {
+            if (schemaDetail.getColumn1() != 0)
+                buss.increaseMaxTraveller();
+            if (schemaDetail.getColumn2() != 0)
+                buss.increaseMaxTraveller();
+            if (schemaDetail.getColumn4() != 0)
+                buss.increaseMaxTraveller();
+            if (schemaDetail.getColumn5() != 0)
+                buss.increaseMaxTraveller();
+
         });
+        Buss savedBus = bussRepository.save(buss);
+        return Buss.toResponse(savedBus);
+    }
+
+    @Override
+    @Transactional
+    public ResponseBus deactivateBusById(int busId) {
+        Buss buss = bussRepository.findById(busId).orElseThrow(() -> new RuntimeException("Bus not found" + busId));
+        buss.setActive(false);
+        Buss savedBus = bussRepository.save(buss);
+        return Buss.toResponse(savedBus);
     }
 
     @Override
@@ -87,5 +102,9 @@ public class BussSerciveImpl implements BussService {
             return bussRepository.findByPlateNumber(plateNumber);
         else
             return Optional.empty();
+    }
+
+    private int seatCount(int seatNumber) {
+        return seatNumber > 0 ? 1 : 0;
     }
 }

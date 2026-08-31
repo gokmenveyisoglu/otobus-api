@@ -1,12 +1,13 @@
 package com.gokmen.otobusapi.controller;
 
-import com.gokmen.otobusapi.repository.entities.SchemaDetail;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.CreateSchemaDetail;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.ResponseSchemaDetail;
+import com.gokmen.otobusapi.repository.record.SchemaDetail.UpdateSchemaDetail;
 import com.gokmen.otobusapi.service.SchemaDetailService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("schema-detail")
@@ -18,26 +19,27 @@ public class SchemaDetailController {
     public SchemaDetailController(SchemaDetailService schemaDetailService){
         this.schemaDetailService = schemaDetailService;
     }
-
     @PostMapping("header/{hid}")
-    public void setSchema(@PathVariable("hid") int headerId,@RequestBody List<SchemaDetail> schemaDetail){
+    public List<ResponseSchemaDetail> setSchema(@PathVariable("hid") int headerId, @RequestBody List<CreateSchemaDetail> request){
 
-        schemaDetailService.saveSchemaDetail(headerId, schemaDetail);
+        return schemaDetailService.saveSchemaDetail(headerId, request);
     }
-
     @PutMapping("{id}")
-    public void updateSchema(@PathVariable("id") int detailId, @RequestBody SchemaDetail schemaDetail){
-        schemaDetailService.updateSchemaDetail(detailId, schemaDetail);
+    public ResponseSchemaDetail updateSchema(@PathVariable("id") int detailId, @RequestBody UpdateSchemaDetail schemaDetail){
+        return schemaDetailService.updateSchemaDetail(detailId, schemaDetail);
 
     }
-
     @GetMapping("{id}")
-    public Optional<SchemaDetail> FindById(@PathVariable("id") int id){
+    public ResponseSchemaDetail FindById(@PathVariable("id") int id){
         return schemaDetailService.findById(id);
     }
     @GetMapping()
-    public List<SchemaDetail> findAll(){
+    public List<ResponseSchemaDetail> findAll(){
         return schemaDetailService.findAll();
+    }
+    @GetMapping("header/{headerid}")
+    public List<ResponseSchemaDetail> findByHeaderId(@PathVariable("headerid") int hid) {
+        return schemaDetailService.findAllByHeaderId(hid);
     }
 
 
