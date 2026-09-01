@@ -24,6 +24,8 @@ public class Voyages {
 
     private String voyageNo;
 
+    private String journeyNo;
+
     private String voyageName;
 
     @JsonIgnore
@@ -43,6 +45,11 @@ public class Voyages {
     private List<Stations> lastStation;*/
 
     @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "bus_id", nullable = false)
+    private Buss bus;
+
+    @JsonIgnore
     private int firstStation;
 
     @JsonIgnore
@@ -54,5 +61,6 @@ public class Voyages {
 
     private int voyagePrice;
 
+    private boolean active = true;
 
 }

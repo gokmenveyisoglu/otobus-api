@@ -47,7 +47,7 @@ public class Buss {
                 buss.getBus_id(),
                 buss.getMax_traveller(),
                 buss.getNumber_plate(),
-                buss.getSchemaHeader(),
+                SchemaHeader.toResponse(buss.getSchemaHeader()),
                 buss.getRoute(),
                 buss.isActive()
         );
