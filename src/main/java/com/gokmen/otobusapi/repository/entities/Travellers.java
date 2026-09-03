@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Date;
-import java.util.List;
 
 @Entity
 @Data
@@ -34,15 +33,15 @@ public class Travellers {
     private String indentityNumber;
 
     @JsonIgnore
-    @ManyToMany(cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH}, fetch = FetchType.LAZY) // ManyToOne? || ManyToMany
-    private List<Buss> bus_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Buss busId;
 
     @JsonIgnore
     private int seat;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)
-    private Voyages voyageNo;
+    private Voyages voyageId;
 
     @JsonIgnore
     private int firstStation;
@@ -55,6 +54,8 @@ public class Travellers {
 
     @JsonIgnore
     private Date travelEnd;
+
+    private boolean active;
 
     /*@JsonIgnore
     @ManyToMany(cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH})

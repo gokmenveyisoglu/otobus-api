@@ -16,4 +16,5 @@ public interface VoyagesService {
     void deactivateVoyage(int voyageId);
     List<ResponseVoyage> findAllVoyages();
     Optional<Voyages> findByNo(String voyageNo);
+    ResponseVoyage toResponse(Voyages voyages);
 }

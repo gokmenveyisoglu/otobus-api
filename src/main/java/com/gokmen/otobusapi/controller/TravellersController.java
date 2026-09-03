@@ -1,6 +1,9 @@
 package com.gokmen.otobusapi.controller;
 
 import com.gokmen.otobusapi.repository.entities.Travellers;
+import com.gokmen.otobusapi.repository.record.Traveller.CreateTraveller;
+import com.gokmen.otobusapi.repository.record.Traveller.ResponseTraveller;
+import com.gokmen.otobusapi.repository.record.Traveller.UpdateTraveller;
 import com.gokmen.otobusapi.service.TravellersService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("travellars")
+@RequestMapping("travellers")
 @Tag(name = "Travellars", description = "Yolcular için")
 public class TravellersController {
 
@@ -19,25 +22,29 @@ public class TravellersController {
         this.travellersService = travellersService;
     }
 
-    @PostMapping("voyage/{vno}/bus/{bno}/seat/{sno}/foreigner/{foreign}")
-    public void setTraveler(@PathVariable("vno") String voyageNo,@PathVariable("bno") int busNo, @PathVariable("sno") int seatNo, @PathVariable("foreign") boolean foreign, @RequestBody Travellers travellers){
-        travellersService.setTraveller(voyageNo, busNo, seatNo, foreign, travellers);
+    @PostMapping()
+    public void setTraveler(@RequestBody CreateTraveller request){
+        travellersService.setTraveller(request);
     }
     @PutMapping("{id}")
-    public void updateTraveler(@PathVariable("id") int travelerId, @RequestBody Travellers travellers){
-        travellersService.updateTraveller(travelerId, travellers);
+    public void updateTraveler(@PathVariable("id") int travelerId, @RequestBody UpdateTraveller request){
+        travellersService.updateTraveller(travelerId, request);
+    }
+    @PatchMapping("{id}/deactivate")
+    public void deactivateTraveller(@PathVariable("id") int travellerId) {
+        travellersService.deactivateTraveller(travellerId);
     }
     @GetMapping()
-    public List<Travellers> getAllTravellers(){
+    public List<ResponseTraveller> getAllTravellers(){
         return travellersService.findAllTravellers();
     }
     @GetMapping("{id}")
     public Optional<Travellers> getTravellerById(@PathVariable("id") int travellerId){
         return travellersService.findById(travellerId);
     }
-    @GetMapping("{vno}")
-    public Optional<Travellers> getTravellersByVoyage(@PathVariable("vno") String voyageNo){
-        return travellersService.findByVoyage(voyageNo);
+    @GetMapping("/occupied-seats/{voyageId}")
+    public List<Integer> getOccupiedSeats(@PathVariable("voyageId") int voyageId) {
+        return travellersService.getOccupiedSeats(voyageId);
     }
     @GetMapping("bus/{bus-plate-number}")
     public Optional<Travellers> getTravellersByBus(@PathVariable("bus-plate-number") String busPlateNumber){

@@ -33,7 +33,7 @@ public class Buss {
     private SchemaHeader schemaHeader; // header no
 
     @JsonIgnore
-    @ManyToMany
+    @OneToMany(mappedBy = "busId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Travellers> travellers; //traveller no
 
     @JsonIgnore

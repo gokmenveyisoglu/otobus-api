@@ -33,7 +33,7 @@ public class Voyages {
     private Route routes;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "voyageNo", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "voyageId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Travellers> traveler;
 
     /*@JsonIgnore
