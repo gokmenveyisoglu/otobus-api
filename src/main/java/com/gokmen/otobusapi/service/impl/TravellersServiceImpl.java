@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -21,10 +22,10 @@ public class TravellersServiceImpl implements TravellersService {
     private final TravellerRepository travellerRepository;
     private final BussRepository bussRepository;
     private final VoyagesRepository voyagesRepository;
-    private final VoyagesService voyagesService; //Başka türlü yapmayı bak
+    private final VoyagesService voyagesService; //Başka bir service e service çağırmak doğru mu bak.
 
 
-    public TravellersServiceImpl(TravellerRepository travellerRepository, BussRepository bussRepository, VoyagesRepository voyagesRepository,VoyagesService voyagesService) {
+    public TravellersServiceImpl(TravellerRepository travellerRepository, BussRepository bussRepository, VoyagesRepository voyagesRepository, VoyagesService voyagesService) {
         this.travellerRepository = travellerRepository;
         this.bussRepository = bussRepository;
         this.voyagesRepository = voyagesRepository;
@@ -47,6 +48,10 @@ public class TravellersServiceImpl implements TravellersService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat does not exists");
         if (isSeatOccupied(voyage, request.seat()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "The selected seat already occupied.");
+        if (!sameGender(request, voyage))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat is adjacent to different gender");
+        if (genderLock(request, voyage))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The gender lock happened.");
 
         String travellerName = requiredText(request.travellerName(), "Traveller name is required");
         String travellerSurname = requiredText(request.travellerSurname(), "Traveller surname is required");
@@ -149,13 +154,13 @@ public class TravellersServiceImpl implements TravellersService {
             return false;
         }
         return buss.getSchemaHeader().getSchemaDetails().stream().anyMatch(row ->
-            row.getColumn1() == requestedSeat || row.getColumn2() == requestedSeat || row.getColumn4() == requestedSeat || row.getColumn5() == requestedSeat
+                row.getColumn1() == requestedSeat || row.getColumn2() == requestedSeat || row.getColumn4() == requestedSeat || row.getColumn5() == requestedSeat
         );
     }
 
     private boolean isSeatOccupied(Voyages selectedVoyage, int requestedSeat) {
         return travellerRepository.findActiveTravellersForJourney(selectedVoyage.getBus().getBus_id(), selectedVoyage.getJourneyNo()).stream().filter(traveller -> traveller.getSeat() == requestedSeat).anyMatch(traveller ->
-                segmentsOverlap(selectedVoyage.getFirstStation(), selectedVoyage.getLastStation(),traveller.getFirstStation(), traveller.getLastStation()));
+                segmentsOverlap(selectedVoyage.getFirstStation(), selectedVoyage.getLastStation(), traveller.getFirstStation(), traveller.getLastStation()));
     }
 
     private boolean segmentsOverlap(int firstStart, int firstEnd, int secondStart, int secondEnd) {
@@ -166,6 +171,127 @@ public class TravellersServiceImpl implements TravellersService {
 
         return normalizedFirstStart < normalizedSecondEnd && normalizedSecondStart < normalizedFirstEnd;
     }
+
+    private boolean sameGender(CreateTraveller request, Voyages voyages) {
+        String requestedGender = request.gender().trim().toLowerCase(Locale.ROOT);
+
+        if (!requestedGender.equals("erkek") && !requestedGender.equals("kadın"))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid gender");
+
+        List<SchemaDetail> schemaDetails = voyages.getBus().getSchemaHeader().getSchemaDetails();
+
+        List<Travellers> relevantTravellers = travellerRepository.findActiveTravellersForJourney(voyages.getBus().getBus_id(), voyages.getJourneyNo()).stream().filter(traveller -> traveller.getVoyageId() == voyages).toList();
+
+        for (Travellers travellers : relevantTravellers) {
+            for (SchemaDetail row : schemaDetails) {
+                boolean sitNextToTraveller = (request.seat() == row.getColumn1() && travellers.getSeat() == row.getColumn2()) || (request.seat() == row.getColumn2() && travellers.getSeat() == row.getColumn1()) || (request.seat() == row.getColumn4() && travellers.getSeat() == row.getColumn5()) || (request.seat() == row.getColumn5() && travellers.getSeat() == row.getColumn4());
+                if (sitNextToTraveller) {
+                    String existingGender = travellers.getGender().trim().toLowerCase(Locale.ROOT);
+                    return requestedGender.equals(existingGender);
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean genderLock(CreateTraveller request, Voyages voyages) {
+        List<SchemaDetail> schemaDetails = voyages.getBus().getSchemaHeader().getSchemaDetails();
+        List<Travellers> relevantTravellers = travellerRepository.findActiveTravellersForJourney(voyages.getBus().getBus_id(), voyages.getJourneyNo()).stream().filter(traveller -> traveller.getVoyageId().getVoyageId() == voyages.getVoyageId()).toList();
+
+        int up = 0;
+        int down = 0;
+        boolean upBreakPoint = false;
+        boolean downBreakPoint = false;
+
+        int[] position = new int[2];
+
+        for (int j = 0; j < schemaDetails.size(); j++) {
+            if (schemaDetails.get(j).getColumn1() == request.seat()) {
+                position[0] = j;
+                position[1] = 0;
+            }
+            if (schemaDetails.get(j).getColumn2() == request.seat()) {
+                position[0] = j;
+                position[1] = 1;
+            }
+            if (schemaDetails.get(j).getColumn4() == request.seat()) {
+                position[0] = j;
+                position[1] = 3;
+            }
+            if (schemaDetails.get(j).getColumn5() == request.seat()) {
+                position[0] = j;
+                position[1] = 4;
+            }
+        }
+
+        for (Travellers traveller : relevantTravellers) {
+            String gender = traveller.getGender().trim().toLowerCase(Locale.ROOT);
+            for (int l = 0; l < 3; l++) {
+                int upperPos = position[0] - (l + 1);
+                int lowerPos = position[0] + (l + 1);
+                if (position[1] == 0) {
+                    if (position[0] - (l + 1) < (position[0] - l) && upperPos >= 0) {
+                        if (schemaDetails.get(upperPos).getColumn1() != 0) {
+                            if (traveller.getSeat() == schemaDetails.get(upperPos).getColumn1()) {
+                                if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                    up++;
+                                else upBreakPoint = true;
+                            }
+                        }
+
+                    }
+                    if ((position[0] + l) < position[0] + (l + 1) && lowerPos < schemaDetails.size()) {
+                        if (schemaDetails.get(lowerPos).getColumn1() != 0) {
+                            if (traveller.getSeat() == schemaDetails.get(lowerPos).getColumn1()) {
+                                if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                    down++;
+                                else downBreakPoint = true;
+                            }
+                        }
+                    }
+                }
+                if (position[1] == 1) {
+                    if (upperPos >= 0 && schemaDetails.get(upperPos).getColumn2() != 0 && traveller.getSeat() == schemaDetails.get(upperPos).getColumn2()) {
+                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                            up++;
+                        else upBreakPoint = true;
+                    } // schemaDetails.get(upperPos).getColumn2() != 0 kondisyonunda flaglenmesi gerekyiyor.
+                    if (lowerPos < schemaDetails.size() && schemaDetails.get(lowerPos).getColumn2() != 0 && traveller.getSeat() == schemaDetails.get(lowerPos).getColumn2()) {
+                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                            down++;
+                        else downBreakPoint = true;
+                    }
+                }
+                if (position[1] == 3) {
+                    if (upperPos >= 0 && schemaDetails.get(upperPos).getColumn4() != 0 && traveller.getSeat() == schemaDetails.get(upperPos).getColumn4()) {
+                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                            up++;
+                        else upBreakPoint = true;
+                    }
+                    if (lowerPos < schemaDetails.size() && schemaDetails.get(lowerPos).getColumn4() != 0 && traveller.getSeat() == schemaDetails.get(lowerPos).getColumn4()) {
+                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                            down++;
+                        else downBreakPoint = true;
+                    }
+                }
+                if (position[1] == 4) {
+                    if (upperPos >= 0 && schemaDetails.get(upperPos).getColumn5() != 0 && traveller.getSeat() == schemaDetails.get(upperPos).getColumn5()) {
+                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                            up++;
+                        else upBreakPoint = true;
+                    }
+                    if (lowerPos < schemaDetails.size() && schemaDetails.get(lowerPos).getColumn5() != 0 && traveller.getSeat() == schemaDetails.get(lowerPos).getColumn5()) {
+                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                            down++;
+                        else downBreakPoint = true;
+                    }
+                }
+            }
+        }
+        return up >= 3 || down >= 3 || (up + down) >= 3;
+    }
+
+
 
     private String requiredText(String value, String errorMessage) {
         if (value == null || value.isBlank()) {
