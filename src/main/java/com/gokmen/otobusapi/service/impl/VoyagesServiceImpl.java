@@ -152,7 +152,7 @@ public class VoyagesServiceImpl implements VoyagesService {
     @Override
     @Transactional(readOnly = true)
     public List<ResponseVoyage> findAllVoyages() {
-        return voyagesRepository.findAll().stream().map(this::toResponse).toList();
+        return voyagesRepository.findAll().stream().map(Voyages::toResponse).toList();
     }
 
     @Override
@@ -170,36 +170,5 @@ public class VoyagesServiceImpl implements VoyagesService {
                 return index;
         }
         return -1;
-    }
-
-    @Override
-    public ResponseVoyage toResponse(Voyages voyages) {
-        List<Stations> orderStations = voyages.getRoutes().getStations();
-
-        int firstStationIndex = voyages.getFirstStation();
-        int lastStationIndex = voyages.getLastStation();
-
-        if (firstStationIndex < 0 || firstStationIndex >= orderStations.size())
-            throw new RuntimeException("Voyage contain an invalid departure station position");
-        if (lastStationIndex < 0 || lastStationIndex >= orderStations.size())
-            throw new RuntimeException("Voyage contain an invalid arrival station position");
-
-        int departureStationId = orderStations.get(firstStationIndex).getStationId();
-        int arrivalStationId = orderStations.get(lastStationIndex).getStationId();
-
-        return new ResponseVoyage(
-                voyages.getVoyageId(),
-                voyages.getVoyageNo(),
-                voyages.getJourneyNo(),
-                voyages.getVoyageName(),
-                voyages.getRoutes(),
-                departureStationId,
-                arrivalStationId,
-                Buss.toResponse(voyages.getBus()),
-                voyages.getStartDate(),
-                voyages.getEndDate(),
-                voyages.getVoyagePrice(),
-                voyages.isActive()
-        );
     }
 }

@@ -2,95 +2,169 @@ package com.gokmen.otobusapi.service.impl;
 
 import com.gokmen.otobusapi.repository.*;
 import com.gokmen.otobusapi.repository.entities.*;
+import com.gokmen.otobusapi.repository.entities.Ticket.TicketStatus;
+import com.gokmen.otobusapi.repository.record.Booking.CreateBooking;
+import com.gokmen.otobusapi.repository.record.Booking.ResponseBooking;
+import com.gokmen.otobusapi.repository.record.Ticket.CreateTicket;
 import com.gokmen.otobusapi.repository.record.Traveller.CreateTraveller;
-import com.gokmen.otobusapi.repository.record.Traveller.ResponseTraveller;
-import com.gokmen.otobusapi.repository.record.Traveller.UpdateTraveller;
-import com.gokmen.otobusapi.service.TravellersService;
+import com.gokmen.otobusapi.service.BookingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 
 @Service
-public class TravellersServiceImpl implements TravellersService {
+public class BookingServiceImpl implements BookingService {
 
-    private final TravellerRepository travellerRepository;
-    private final BussRepository bussRepository;
+    private static final String REFERENCE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final SecureRandom random = new SecureRandom();
+
+    private final BookingRepository bookingRepository;
+    private final UserRepository userRepository;
     private final VoyagesRepository voyagesRepository;
+    private final TravellerRepository travellerRepository;
 
-
-    public TravellersServiceImpl(TravellerRepository travellerRepository, BussRepository bussRepository, VoyagesRepository voyagesRepository) {
-        this.travellerRepository = travellerRepository;
-        this.bussRepository = bussRepository;
+    public BookingServiceImpl(BookingRepository bookingRepository, UserRepository userRepository, VoyagesRepository voyagesRepository, TravellerRepository travellerRepository) {
+        this.bookingRepository = bookingRepository;
+        this.userRepository = userRepository;
         this.voyagesRepository = voyagesRepository;
+        this.travellerRepository = travellerRepository;
     }
 
+    @Override
+    public List<Booking> getBookings() {
+        return bookingRepository.findAll();
+    }
 
     @Override
     @Transactional
-    public void setTraveller(CreateTraveller request) {
+    public ResponseBooking setBooking(CreateBooking request) {
+        Booking booking = new Booking();
+        User user = userRepository.findById(request.userId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (!user.isActive())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not active");
         Voyages voyage = voyagesRepository.findById(request.voyageId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Voyage not found"));
         if (!voyage.isActive())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voyage is not active");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voyage not active");
         Buss bus = voyage.getBus();
         if (bus == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voyage does not have a bus");
         if (!bus.isActive())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bus is not active");
-        if (!seatExists(bus, request.seat()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat does not exists");
-        if (isSeatOccupied(voyage, request.seat()))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "The selected seat already occupied.");
-        if (!sameGender(request, voyage))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat is adjacent to different gender");
-        if (genderLock(request, voyage))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The gender lock happened.");
+        request.travellers().forEach(traveller -> {
+            if (!seatExists(bus, traveller.seat()))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat does not exists");
+            if (isSeatOccupied(voyage, traveller.seat()))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "The selected seat already occupied.");
+        });
+        request.travellers().forEach(traveller -> {
+            if (request.travellers().stream().anyMatch(traveller1 -> traveller.seat() == traveller1.seat() && !traveller.equals(traveller1)))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Can't select the same seats.");
+        });
 
-        String travellerName = requiredText(request.travellerName(), "Traveller name is required");
-        String travellerSurname = requiredText(request.travellerSurname(), "Traveller surname is required");
-        String gender = requiredText(request.gender(), "Gender is required");
-        String storedIdentification;
+        ArrayList<Travellers> travellers = new ArrayList<>();
 
-        if (request.isForeign()) {
-            storedIdentification = "Foreigner";
-        } else {
-            String identificationNumber = request.identificationNumber();
-            if (identificationNumber == null || !identificationNumber.matches("\\d{11}"))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identification number must contain 11 digits");
-            if (!validId(identificationNumber))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid identification number");
+        request.travellers().forEach(traveller1 -> {
+            Travellers traveller = new Travellers();
+            if (!sameGender(traveller1, voyage))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat is adjacent to different gender");
+            if (genderLock(traveller1, voyage))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The gender lock happened.");
 
-            String first;
-            String last;
+            String travellerName = requiredText(traveller1.travellerName(), "Traveller name is required");
+            String travellerSurname = requiredText(traveller1.travellerSurname(), "Traveller surname is required");
+            String gender = requiredText(traveller1.gender(), "Gender is required");
+            String storedIdentification;
 
-            first = request.identificationNumber().substring(0, 2);
-            last = request.identificationNumber().substring(9);
+            if (traveller1.isForeign()) {
+                storedIdentification = "Foreigner";
+            } else {
+                String identificationNumber = traveller1.identificationNumber();
+                if (identificationNumber == null || !identificationNumber.matches("\\d{11}"))
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identification number must contain 11 digits");
+                if (!validId(identificationNumber))
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid identification number");
 
-            storedIdentification = first + "*******" + last;
+                String first;
+                String last;
+
+                first = traveller1.identificationNumber().substring(0, 2);
+                last = traveller1.identificationNumber().substring(9);
+
+                storedIdentification = first + "*******" + last;
+            }
+
+            traveller.setTravellerName(travellerName);
+            traveller.setTravellerSurname(travellerSurname);
+            traveller.setGender(gender);
+            traveller.setForeign(traveller1.isForeign());
+            traveller.setIndentityNumber(storedIdentification);
+
+            traveller.setBusId(bus);
+            traveller.setVoyageId(voyage);
+            traveller.setSeat(traveller1.seat());
+            traveller.setFirstStation(voyage.getFirstStation());
+            traveller.setLastStation(voyage.getLastStation());
+            traveller.setTravelStart(voyage.getStartDate());
+            traveller.setTravelEnd(voyage.getEndDate());
+            traveller.setActive(true);
+
+            travellers.add(traveller);
+        });
+
+        if (travellers.isEmpty())
+            throw new  ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one traveller is required");
+
+        ArrayList<Ticket> tickets = new ArrayList<>();
+
+        booking.setUser(user);
+        booking.setVoyages(voyage);
+        booking.setBookingReference(generateBookingReference());
+        booking.setCreatedAt(Instant.now());
+
+        travellers.forEach(travellers1 -> {
+            CreateTicket createTicket = new CreateTicket(booking, travellers1, voyage.getVoyagePrice(), TicketStatus.CONFIRMED);
+            Ticket ticket = Ticket.fromCreate(createTicket);
+            tickets.add(ticket);
+        });
+
+        booking.setTickets(tickets);
+        Booking savedBooking = bookingRepository.save(booking);
+        return Booking.toResponse(savedBooking);
+    }
+
+    @Override
+    @Transactional
+    public ResponseBooking deactivateBooking(int bookingId) {
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
+        booking.setActive(false);
+        Booking savedBooking = bookingRepository.save(booking);
+        return Booking.toResponse(savedBooking);
+    }
+
+    private String generateBookingReference() {
+        for (int attempt = 0; attempt <10; attempt++) {
+            StringBuilder reference = new StringBuilder();
+
+            for (int i = 0; i < 6; i++) {
+                int index = random.nextInt(REFERENCE_CHARACTERS.length());
+                reference.append(REFERENCE_CHARACTERS.charAt(index));
+            }
+
+            String candidate = reference.toString();
+
+            if (!bookingRepository.existsByBookingReference(candidate)) {
+                return candidate;
+            }
         }
 
-        Travellers traveller = new Travellers();
-
-        traveller.setTravellerName(travellerName);
-        traveller.setTravellerSurname(travellerSurname);
-        traveller.setGender(gender);
-        traveller.setForeign(request.isForeign());
-        traveller.setIndentityNumber(storedIdentification);
-
-        traveller.setBusId(bus);
-        traveller.setVoyageId(voyage);
-        traveller.setSeat(request.seat());
-        traveller.setFirstStation(voyage.getFirstStation());
-        traveller.setLastStation(voyage.getLastStation());
-        traveller.setTravelStart(voyage.getStartDate());
-        traveller.setTravelEnd(voyage.getEndDate());
-        traveller.setActive(true);
-
-        travellerRepository.save(traveller);
+        throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Could not generate a booking reference. Please try again.");
     }
 
     private boolean validId(String identificationNumber) {
@@ -103,46 +177,6 @@ public class TravellersServiceImpl implements TravellersService {
         boolean condition2 = (((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 7) + ((numbers[1] + numbers[3] + numbers[5] + numbers[7]) * 9)) % 10 == numbers[9];
         boolean condition3 = ((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 8) % 10 == numbers[10];
         return condition1 && condition2 && condition3;
-    }
-
-    @Override
-    @Transactional
-    public void updateTraveller(int travelerId, UpdateTraveller request) {
-        Travellers traveller = travellerRepository.findById(travelerId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Traveller not found"));
-
-        if (!traveller.isActive())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Traveller is not Active");
-
-        if (!seatExists(traveller.getBusId(), request.seat()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat does not exists");
-        if (isSeatOccupied(traveller.getVoyageId(), request.seat()))
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "The selected seat already occupied.");
-
-        traveller.setSeat(request.seat());
-        travellerRepository.save(traveller);
-    }
-
-    @Override
-    @Transactional
-    public void deactivateTraveller(int travellerId) {
-        Travellers traveller = travellerRepository.findById(travellerId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Traveller not found"));
-        traveller.setActive(false);
-        travellerRepository.save(traveller);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ResponseTraveller> findAllTravellers() {
-        return travellerRepository.findAll().stream().map(Travellers::toResponse).toList();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<Integer> getOccupiedSeats(int voyageId) {
-        Voyages selectedVoyage = voyagesRepository.findById(voyageId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Voyage not found"));
-        return travellerRepository.findActiveTravellersForJourney(selectedVoyage.getBus().getBus_id(), selectedVoyage.getJourneyNo()).stream().filter(existingTraveller ->
-                segmentsOverlap(selectedVoyage.getFirstStation(), selectedVoyage.getLastStation(), existingTraveller.getFirstStation(), existingTraveller.getLastStation())
-        ).map(Travellers::getSeat).distinct().sorted().toList();
     }
 
     private boolean seatExists(Buss buss, int requestedSeat) {
@@ -287,29 +321,10 @@ public class TravellersServiceImpl implements TravellersService {
         return up >= 3 || down >= 3 || (up + down) >= 3;
     }
 
-
-
     private String requiredText(String value, String errorMessage) {
         if (value == null || value.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage);
         }
         return value.trim();
     }
-
-    @Override
-    public Optional<Travellers> findById(int travellerId) {
-        if (travellerRepository.findById(travellerId).isPresent())
-            return travellerRepository.findById(travellerId);
-        else
-            return Optional.empty();
-    }
-
-    @Override
-    public Optional<Travellers> findByBus(String plateNumber) {
-        if (bussRepository.findAllTravellersByPlateNumber(plateNumber).isPresent())
-            return bussRepository.findAllTravellersByPlateNumber(plateNumber);
-        else
-            return Optional.empty();
-    }
 }
-

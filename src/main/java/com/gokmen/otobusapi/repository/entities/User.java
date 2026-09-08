@@ -21,6 +21,7 @@ public class User {
 
     private String email;
 
+    @Builder.Default
     private boolean active = true;
 
     public static ResponseUser toResponse(User user) {
