@@ -1,8 +1,8 @@
 package com.gokmen.otobusapi.repository.record.Booking;
 
-import com.gokmen.otobusapi.repository.record.Traveller.CreateTraveller;
+import com.gokmen.otobusapi.repository.record.Ticket.CreateTicket;
 
 import java.util.List;
 
-public record CreateBooking(int userId, int voyageId, List<CreateTraveller> travellers) {
+public record CreateBooking(int userId, int voyageId, List<CreateTicket> tickets) {
 }

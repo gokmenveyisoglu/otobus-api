@@ -33,10 +33,6 @@ public class Buss {
     private SchemaHeader schemaHeader; // header no
 
     @JsonIgnore
-    @OneToMany(mappedBy = "busId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Travellers> travellers; //traveller no
-
-    @JsonIgnore
     @ManyToOne
     private Route route;
 
@@ -55,14 +51,6 @@ public class Buss {
 
     public int getBus_id() {
         return bus_id;
-    }
-
-    public List<Travellers> getTravellers() {
-        return travellers;
-    }
-
-    public void setTravellers(List<Travellers> travellers) {
-        this.travellers = travellers;
     }
 
     public SchemaHeader getSchemaHeader() {

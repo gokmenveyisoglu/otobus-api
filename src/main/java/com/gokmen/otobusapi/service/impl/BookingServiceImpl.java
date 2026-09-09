@@ -6,7 +6,6 @@ import com.gokmen.otobusapi.repository.entities.Ticket.TicketStatus;
 import com.gokmen.otobusapi.repository.record.Booking.CreateBooking;
 import com.gokmen.otobusapi.repository.record.Booking.ResponseBooking;
 import com.gokmen.otobusapi.repository.record.Ticket.CreateTicket;
-import com.gokmen.otobusapi.repository.record.Traveller.CreateTraveller;
 import com.gokmen.otobusapi.service.BookingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,18 +28,18 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final VoyagesRepository voyagesRepository;
-    private final TravellerRepository travellerRepository;
+    private final TicketRepository ticketRepository;
 
-    public BookingServiceImpl(BookingRepository bookingRepository, UserRepository userRepository, VoyagesRepository voyagesRepository, TravellerRepository travellerRepository) {
+    public BookingServiceImpl(BookingRepository bookingRepository, UserRepository userRepository, VoyagesRepository voyagesRepository, TicketRepository ticketRepository) {
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.voyagesRepository = voyagesRepository;
-        this.travellerRepository = travellerRepository;
+        this.ticketRepository = ticketRepository;
     }
 
     @Override
-    public List<Booking> getBookings() {
-        return bookingRepository.findAll();
+    public List<ResponseBooking> getBookings() {
+        return bookingRepository.findAll().stream().map(Booking::toResponse).toList();
     }
 
     @Override
@@ -58,82 +57,37 @@ public class BookingServiceImpl implements BookingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voyage does not have a bus");
         if (!bus.isActive())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Bus is not active");
-        request.travellers().forEach(traveller -> {
-            if (!seatExists(bus, traveller.seat()))
+        request.tickets().forEach(ticket -> {
+            if (!seatExists(bus, ticket.seat()))
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat does not exists");
-            if (isSeatOccupied(voyage, traveller.seat()))
+            if (isSeatOccupied(voyage, ticket.seat()))
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "The selected seat already occupied.");
         });
-        request.travellers().forEach(traveller -> {
-            if (request.travellers().stream().anyMatch(traveller1 -> traveller.seat() == traveller1.seat() && !traveller.equals(traveller1)))
+        request.tickets().forEach(ticket -> {
+            if (request.tickets().stream().anyMatch(ticket1 -> ticket.seat() == ticket1.seat() && ticket.travellers() != ticket1.travellers()))
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Can't select the same seats.");
         });
 
-        ArrayList<Travellers> travellers = new ArrayList<>();
+        ArrayList<Ticket> tickets = new ArrayList<>();
 
-        request.travellers().forEach(traveller1 -> {
-            if (!isGenderCompatible(traveller1, voyage))
+        if (genderLock(request.tickets(), voyage))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The gender lock happened.");
+
+        request.tickets().forEach(ticket -> {
+            if (!isGenderCompatible(ticket, voyage))
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat is adjacent to different gender");
-            if (genderLock(traveller1, voyage))
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The gender lock happened.");
-            Travellers traveller = new Travellers();
+            Ticket newTicket = Ticket.fromCreate(ticket, booking, voyage);
 
-            String travellerName = requiredText(traveller1.travellerName(), "Traveller name is required");
-            String travellerSurname = requiredText(traveller1.travellerSurname(), "Traveller surname is required");
-            String gender = requiredText(traveller1.gender(), "Gender is required");
-            String storedIdentification;
-
-            if (traveller1.isForeign()) {
-                storedIdentification = "Foreigner";
-            } else {
-                String identificationNumber = traveller1.identificationNumber();
-                if (identificationNumber == null || !identificationNumber.matches("\\d{11}"))
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identification number must contain 11 digits");
-                if (!validId(identificationNumber))
-                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid identification number");
-
-                String first;
-                String last;
-
-                first = traveller1.identificationNumber().substring(0, 2);
-                last = traveller1.identificationNumber().substring(9);
-
-                storedIdentification = first + "*******" + last;
-            }
-
-            traveller.setTravellerName(travellerName);
-            traveller.setTravellerSurname(travellerSurname);
-            traveller.setGender(gender);
-            traveller.setForeign(traveller1.isForeign());
-            traveller.setIndentityNumber(storedIdentification);
-
-            traveller.setBusId(bus);
-            traveller.setVoyageId(voyage);
-            traveller.setSeat(traveller1.seat());
-            traveller.setFirstStation(voyage.getFirstStation());
-            traveller.setLastStation(voyage.getLastStation());
-            traveller.setTravelStart(voyage.getStartDate());
-            traveller.setTravelEnd(voyage.getEndDate());
-            traveller.setActive(true);
-
-            travellers.add(traveller);
+            tickets.add(newTicket);
         });
 
-        if (travellers.isEmpty())
-            throw new  ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one traveller is required");
-
-        ArrayList<Ticket> tickets = new ArrayList<>();
+        if (tickets.isEmpty())
+            throw new  ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one ticket is required");
 
         booking.setUser(user);
         booking.setVoyages(voyage);
         booking.setBookingReference(generateBookingReference());
         booking.setCreatedAt(Instant.now());
-
-        travellers.forEach(travellers1 -> {
-            CreateTicket createTicket = new CreateTicket(booking, travellers1, voyage.getVoyagePrice(), TicketStatus.CONFIRMED);
-            Ticket ticket = Ticket.fromCreate(createTicket);
-            tickets.add(ticket);
-        });
 
         booking.setTickets(tickets);
         Booking savedBooking = bookingRepository.save(booking);
@@ -145,8 +99,18 @@ public class BookingServiceImpl implements BookingService {
     public ResponseBooking deactivateBooking(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
         booking.setActive(false);
+        booking.getTickets().forEach(ticket -> ticket.setStatus(TicketStatus.CANCELLED));
         Booking savedBooking = bookingRepository.save(booking);
         return Booking.toResponse(savedBooking);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Integer> getOccupiedSeats(int voyageId) {
+        Voyages selectedVoyage = voyagesRepository.findById(voyageId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Voyage not found"));
+        return ticketRepository.findActiveTicketsForJourney(selectedVoyage.getBus().getBus_id(),selectedVoyage.getJourneyNo(), TicketStatus.CONFIRMED).stream().filter(existingTraveller ->
+                segmentsOverlap(selectedVoyage.getFirstStation(), selectedVoyage.getLastStation(), existingTraveller.getFirstStation(), existingTraveller.getLastStation())
+        ).map(Ticket::getSeat).distinct().sorted().toList();
     }
 
     private String generateBookingReference() {
@@ -190,8 +154,8 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private boolean isSeatOccupied(Voyages selectedVoyage, int requestedSeat) {
-        return travellerRepository.findActiveTravellersForJourney(selectedVoyage.getBus().getBus_id(), selectedVoyage.getJourneyNo()).stream().filter(traveller -> traveller.getSeat() == requestedSeat).anyMatch(traveller ->
-                segmentsOverlap(selectedVoyage.getFirstStation(), selectedVoyage.getLastStation(), traveller.getFirstStation(), traveller.getLastStation()));
+        return ticketRepository.findActiveTicketsForJourney(selectedVoyage.getBus().getBus_id(), selectedVoyage.getJourneyNo(), TicketStatus.CONFIRMED).stream().filter(ticket -> ticket.getSeat() == requestedSeat).anyMatch(ticket ->
+                segmentsOverlap(selectedVoyage.getFirstStation(), selectedVoyage.getLastStation(), ticket.getFirstStation(), ticket.getLastStation()));
     }
 
     private boolean segmentsOverlap(int firstStart, int firstEnd, int secondStart, int secondEnd) {
@@ -203,21 +167,21 @@ public class BookingServiceImpl implements BookingService {
         return normalizedFirstStart < normalizedSecondEnd && normalizedSecondStart < normalizedFirstEnd;
     }
 
-    private boolean isGenderCompatible(CreateTraveller request, Voyages voyages) {
-        String requestedGender = request.gender().trim().toLowerCase(Locale.ROOT);
+    private boolean isGenderCompatible(CreateTicket request, Voyages voyages) {
+        String requestedGender = request.travellers().gender().trim().toLowerCase(Locale.ROOT);
 
         if (!requestedGender.equals("erkek") && !requestedGender.equals("kadın"))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid gender");
 
         List<SchemaDetail> schemaDetails = voyages.getBus().getSchemaHeader().getSchemaDetails();
 
-        List<Travellers> relevantTravellers = travellerRepository.findActiveTravellersForJourney(voyages.getBus().getBus_id(), voyages.getJourneyNo()).stream().filter(traveller -> segmentsOverlap(voyages.getFirstStation(), voyages.getLastStation(), traveller.getFirstStation(), traveller.getLastStation())).toList(); // Sondaki filtre gerekiyor mu yoksa gerekmiyor mu kontrolet.
+        List<Ticket> relevantTickets = ticketRepository.findActiveTicketsForJourney(voyages.getBus().getBus_id(), voyages.getJourneyNo(), TicketStatus.CONFIRMED).stream().filter(ticket -> segmentsOverlap(voyages.getFirstStation(), voyages.getLastStation(), ticket.getFirstStation(), ticket.getLastStation())).toList();
 
-        for (Travellers travellers : relevantTravellers) {
+        for (Ticket tickets : relevantTickets) {
             for (SchemaDetail row : schemaDetails) {
-                boolean sitNextToTraveller = (request.seat() == row.getColumn1() && travellers.getSeat() == row.getColumn2()) || (request.seat() == row.getColumn2() && travellers.getSeat() == row.getColumn1()) || (request.seat() == row.getColumn4() && travellers.getSeat() == row.getColumn5()) || (request.seat() == row.getColumn5() && travellers.getSeat() == row.getColumn4());
+                boolean sitNextToTraveller = (request.seat() == row.getColumn1() && tickets.getSeat() == row.getColumn2()) || (request.seat() == row.getColumn2() && tickets.getSeat() == row.getColumn1()) || (request.seat() == row.getColumn4() && tickets.getSeat() == row.getColumn5()) || (request.seat() == row.getColumn5() && tickets.getSeat() == row.getColumn4());
                 if (sitNextToTraveller) {
-                    String existingGender = travellers.getGender().trim().toLowerCase(Locale.ROOT);
+                    String existingGender = tickets.getTraveller().getGender().trim().toLowerCase(Locale.ROOT);
                     if (!requestedGender.equals(existingGender))
                         return false;
                 }
@@ -226,127 +190,128 @@ public class BookingServiceImpl implements BookingService {
         return true;
     }
 
-    private boolean genderLock(CreateTraveller request, Voyages voyages) {
+    private boolean genderLock(List<CreateTicket> requests, Voyages voyages) {
         List<SchemaDetail> schemaDetails = voyages.getBus().getSchemaHeader().getSchemaDetails();
-        List<Travellers> relevantTravellers = travellerRepository.findActiveTravellersForJourney(voyages.getBus().getBus_id(), voyages.getJourneyNo()).stream().filter(traveller -> traveller.getVoyageId().getVoyageId() == voyages.getVoyageId()).toList();
+        List<Ticket> relevantTickets = new ArrayList<>(ticketRepository.findActiveTicketsForJourney(voyages.getBus().getBus_id(), voyages.getJourneyNo(), TicketStatus.CONFIRMED).stream().filter(ticket -> ticket.getBooking().getVoyages().getVoyageId() == voyages.getVoyageId()).toList());
 
-        int up = 0;
-        int down = 0;
-        boolean upBreakPoint = false;
-        boolean downBreakPoint = false;
+        for (CreateTicket request : requests) {
+            int up = 0;
+            int down = 0;
+            boolean upBreakPoint = false;
+            boolean downBreakPoint = false;
 
-        int[] position = new int[2];
+            int[] position = new int[2];
 
-        for (int j = 0; j < schemaDetails.size(); j++) {
-            if (schemaDetails.get(j).getColumn1() == request.seat()) {
-                position[0] = j;
-                position[1] = 0;
-            }
-            if (schemaDetails.get(j).getColumn2() == request.seat()) {
-                position[0] = j;
-                position[1] = 1;
-            }
-            if (schemaDetails.get(j).getColumn4() == request.seat()) {
-                position[0] = j;
-                position[1] = 3;
-            }
-            if (schemaDetails.get(j).getColumn5() == request.seat()) {
-                position[0] = j;
-                position[1] = 4;
-            }
-        }
-        List<Travellers> upperTravellers = relevantTravellers.stream().filter(traveller -> traveller.getSeat() < request.seat()).sorted(Comparator.comparingInt(Travellers::getSeat).reversed()).toList();
-        List<Travellers> lowerTravellers = relevantTravellers.stream().filter(traveller -> traveller.getSeat() > request.seat()).sorted(Comparator.comparingInt(Travellers::getSeat)).toList();
-
-        // Eğer kullanılmayan bir koltuk varsa sayaç durmuyor.
-
-        for (Travellers upperTraveller : upperTravellers) {
-            String genderU = upperTraveller.getGender().trim().toLowerCase(Locale.ROOT);
-            for (int l = 0; l < 3; l++) {
-                int upperPos = position[0] - (l + 1);
-                if (position[1] == 0) {
-                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn1()) {
-                        if (schemaDetails.get(upperPos).getColumn1() != 0 && isSeatOccupied(voyages, schemaDetails.get(upperPos).getColumn1())) {
-                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
-                                up++;
-                            else upBreakPoint = true;
-                        } else upBreakPoint = true;
-                    }
+            for (int j = 0; j < schemaDetails.size(); j++) {
+                if (schemaDetails.get(j).getColumn1() == request.seat()) {
+                    position[0] = j;
+                    position[1] = 0;
                 }
-                if (position[1] == 1) {
-                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn2()) {
-                        if (schemaDetails.get(upperPos).getColumn2() != 0) {
-                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
-                                up++;
-                            else upBreakPoint = true;
-                        } else upBreakPoint = true;
-                    } // schemaDetails.get(upperPos).getColumn2() != 0 kondisyonunda flaglenmesi gerekyiyor.
+                if (schemaDetails.get(j).getColumn2() == request.seat()) {
+                    position[0] = j;
+                    position[1] = 1;
                 }
-                if (position[1] == 3) {
-                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn4()) {
-                        if (schemaDetails.get(upperPos).getColumn4() != 0) {
-                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
-                                up++;
-                            else upBreakPoint = true;
-                        } else upBreakPoint = true;
-                    }
+                if (schemaDetails.get(j).getColumn4() == request.seat()) {
+                    position[0] = j;
+                    position[1] = 3;
                 }
-                if (position[1] == 4) {
-                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn5()) {
-                        if (schemaDetails.get(upperPos).getColumn5() != 0) {
-                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
-                                up++;
-                            else upBreakPoint = true;
-                        } else upBreakPoint = true;
-                    }
+                if (schemaDetails.get(j).getColumn5() == request.seat()) {
+                    position[0] = j;
+                    position[1] = 4;
                 }
             }
-        }
+            List<Ticket> upperTravellers = relevantTickets.stream().filter(ticket -> ticket.getSeat() < request.seat()).sorted(Comparator.comparingInt(Ticket::getSeat).reversed()).toList();
+            List<Ticket> lowerTravellers = relevantTickets.stream().filter(ticket -> ticket.getSeat() > request.seat()).sorted(Comparator.comparingInt(Ticket::getSeat)).toList();
 
-        for (Travellers lowerTraveller : lowerTravellers) {
-            String genderD = lowerTraveller.getGender().trim().toLowerCase(Locale.ROOT);
-            for (int l = 0; l < 3; l++) {
-                int lowerPos = position[0] + (l + 1);
-                if (position[1] == 0) {
-                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn1()) {
-                        if (schemaDetails.get(lowerPos).getColumn1() != 0) {
-                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
-                                down++;
-                            else downBreakPoint = true;
-                        } else downBreakPoint = true;
+            // Eğer kullanılmayan bir koltuk varsa sayaç durmuyor.
+
+            for (Ticket upperTraveller : upperTravellers) {
+                String genderU = upperTraveller.getTraveller().getGender().trim().toLowerCase(Locale.ROOT);
+                for (int l = 0; l < 3; l++) {
+                    int upperPos = position[0] - (l + 1);
+                    if (position[1] == 0) {
+                        if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn1()) {
+                            if (schemaDetails.get(upperPos).getColumn1() != 0) {
+                                if (genderU.equals(request.travellers().gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                    up++;
+                                else upBreakPoint = true;
+                            } else upBreakPoint = true;
+                        }
                     }
-                }
-                if (position[1] == 1) {
-                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn2()) {
-                        if (schemaDetails.get(lowerPos).getColumn2() != 0) {
-                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
-                                down++;
-                            else downBreakPoint = true;
-                        } else downBreakPoint = true;
+                    if (position[1] == 1) {
+                        if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn2()) {
+                            if (schemaDetails.get(upperPos).getColumn2() != 0) {
+                                if (genderU.equals(request.travellers().gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                    up++;
+                                else upBreakPoint = true;
+                            } else upBreakPoint = true;
+                        } // schemaDetails.get(upperPos).getColumn2() != 0 kondisyonunda flaglenmesi gerekyiyor.
                     }
-                }
-                if (position[1] == 3) {
-                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn4()) {
-                        if (schemaDetails.get(lowerPos).getColumn4() != 0) {
-                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
-                                down++;
-                            else downBreakPoint = true;
-                        } else downBreakPoint = true;
+                    if (position[1] == 3) {
+                        if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn4()) {
+                            if (schemaDetails.get(upperPos).getColumn4() != 0) {
+                                if (genderU.equals(request.travellers().gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                    up++;
+                                else upBreakPoint = true;
+                            } else upBreakPoint = true;
+                        }
                     }
-                }
-                if (position[1] == 4) {
-                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn5()) {
-                        if (schemaDetails.get(lowerPos).getColumn5() != 0) {
-                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
-                                down++;
-                            else downBreakPoint = true;
-                        } else downBreakPoint = true;
+                    if (position[1] == 4) {
+                        if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn5()) {
+                            if (schemaDetails.get(upperPos).getColumn5() != 0) {
+                                if (genderU.equals(request.travellers().gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                    up++;
+                                else upBreakPoint = true;
+                            } else upBreakPoint = true;
+                        }
                     }
                 }
             }
-        }
 
-        /*for (int i = 0; i < relevantTravellers.size(); i++) {
+            for (Ticket lowerTraveller : lowerTravellers) {
+                String genderD = lowerTraveller.getTraveller().getGender().trim().toLowerCase(Locale.ROOT);
+                for (int l = 0; l < 3; l++) {
+                    int lowerPos = position[0] + (l + 1);
+                    if (position[1] == 0) {
+                        if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn1()) {
+                            if (schemaDetails.get(lowerPos).getColumn1() != 0) {
+                                if (genderD.equals(request.travellers().gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                    down++;
+                                else downBreakPoint = true;
+                            } else downBreakPoint = true;
+                        }
+                    }
+                    if (position[1] == 1) {
+                        if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn2()) {
+                            if (schemaDetails.get(lowerPos).getColumn2() != 0) {
+                                if (genderD.equals(request.travellers().gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                    down++;
+                                else downBreakPoint = true;
+                            } else downBreakPoint = true;
+                        }
+                    }
+                    if (position[1] == 3) {
+                        if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn4()) {
+                            if (schemaDetails.get(lowerPos).getColumn4() != 0) {
+                                if (genderD.equals(request.travellers().gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                    down++;
+                                else downBreakPoint = true;
+                            } else downBreakPoint = true;
+                        }
+                    }
+                    if (position[1] == 4) {
+                        if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn5()) {
+                            if (schemaDetails.get(lowerPos).getColumn5() != 0) {
+                                if (genderD.equals(request.travellers().gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                    down++;
+                                else downBreakPoint = true;
+                            } else downBreakPoint = true;
+                        }
+                    }
+                }
+            }
+
+            /*for (int i = 0; i < relevantTravellers.size(); i++) {
             Travellers upperTraveller = null;
             if (i < upperTravellers.size()) {
                 upperTraveller = upperTravellers.get(i);
@@ -432,7 +397,17 @@ public class BookingServiceImpl implements BookingService {
             }
         }*/
 
-        return up >= 3 || down >= 3 || (up + down) >= 3;
+            Travellers traveller = Travellers.fromCreate(request.travellers());
+            Ticket newTicket = new Ticket();
+            newTicket.setTraveller(traveller);
+            newTicket.setSeat(request.seat());
+
+            if (up >= 3 || down >= 3 || (up + down) >= 3) {
+                return true;
+            }
+            relevantTickets.add(newTicket);
+        }
+        return false;
     }
 
     private String requiredText(String value, String errorMessage) {

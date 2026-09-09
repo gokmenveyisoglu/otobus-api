@@ -1,10 +1,13 @@
 package com.gokmen.otobusapi.repository.entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.gokmen.otobusapi.repository.record.Ticket.CreateTicket;
 import com.gokmen.otobusapi.repository.record.Ticket.ResponseTicket;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.Date;
 
 @Entity
 @Getter
@@ -26,26 +29,42 @@ public class Ticket {
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST, optional = false)
     private Travellers traveller;
 
+    private int seat;
+
     private int fare;
+
+    @JsonIgnore
+    private int firstStation;
+
+    @JsonIgnore
+    private int lastStation;
+
+    @JsonIgnore
+    private Date travelStart;
+
+    @JsonIgnore
+    private Date travelEnd;
 
     @Enumerated(EnumType.STRING)
     private TicketStatus status;
-
-    @Builder.Default
-    private boolean active = true;
 
     public enum TicketStatus {
         CONFIRMED,
         CANCELLED
     }
 
-    public static Ticket fromCreate(CreateTicket createTicket) {
+    public static Ticket fromCreate(CreateTicket createTicket, Booking booking, Voyages voyages) {
         Ticket ticket = new Ticket();
 
-        ticket.setBooking(createTicket.booking());
-        ticket.setTraveller(createTicket.travellers());
-        ticket.setFare(createTicket.fare());
-        ticket.setStatus(createTicket.status());
+        ticket.setBooking(booking);
+        ticket.setTraveller(Travellers.fromCreate(createTicket.travellers()));
+        ticket.setSeat(createTicket.seat());
+        ticket.setFare(voyages.getVoyagePrice());
+        ticket.setFirstStation(voyages.getFirstStation());
+        ticket.setLastStation(voyages.getLastStation());
+        ticket.setTravelStart(voyages.getStartDate());
+        ticket.setTravelEnd(voyages.getEndDate());
+        ticket.setStatus(TicketStatus.CONFIRMED);
 
         return ticket;
     }
@@ -55,9 +74,13 @@ public class Ticket {
                 ticket.getTicketNumber(),
                 ticket.booking.getBookingId(),
                 Travellers.toResponse(ticket.getTraveller()),
+                ticket.getSeat(),
                 ticket.getFare(),
-                ticket.getStatus(),
-                ticket.isActive()
+                ticket.getFirstStation(),
+                ticket.getLastStation(),
+                ticket.getTravelStart(),
+                ticket.getTravelEnd(),
+                ticket.getStatus()
         );
     }
 }

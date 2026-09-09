@@ -4,6 +4,7 @@ import com.gokmen.otobusapi.repository.entities.Travellers;
 import com.gokmen.otobusapi.repository.record.Traveller.CreateTraveller;
 import com.gokmen.otobusapi.repository.record.Traveller.ResponseTraveller;
 import com.gokmen.otobusapi.repository.record.Traveller.UpdateTraveller;
+import com.gokmen.otobusapi.service.BookingService;
 import com.gokmen.otobusapi.service.TravellersService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
@@ -17,9 +18,11 @@ import java.util.Optional;
 public class TravellersController {
 
     TravellersService travellersService;
+    BookingService bookingService;
 
-    public TravellersController(TravellersService travellersService){
+    public TravellersController(TravellersService travellersService, BookingService bookingService){
         this.travellersService = travellersService;
+        this.bookingService = bookingService;
     }
 
     @PostMapping()
@@ -44,11 +47,7 @@ public class TravellersController {
     }
     @GetMapping("/occupied-seats/{voyageId}")
     public List<Integer> getOccupiedSeats(@PathVariable("voyageId") int voyageId) {
-        return travellersService.getOccupiedSeats(voyageId);
-    }
-    @GetMapping("bus/{bus-plate-number}")
-    public Optional<Travellers> getTravellersByBus(@PathVariable("bus-plate-number") String busPlateNumber){
-        return travellersService.findByBus(busPlateNumber);
+        return bookingService.getOccupiedSeats(voyageId);
     }
 
 }

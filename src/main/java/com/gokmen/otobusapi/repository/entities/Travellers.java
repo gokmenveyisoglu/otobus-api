@@ -8,10 +8,6 @@ import lombok.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-
 @Entity
 @Getter
 @Setter
@@ -36,29 +32,6 @@ public class Travellers {
 
     private String indentityNumber;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Buss busId;
-
-    @JsonIgnore
-    private int seat;
-
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.EAGER)
-    private Voyages voyageId;
-
-    @JsonIgnore
-    private int firstStation;
-
-    @JsonIgnore
-    private int lastStation;
-
-    @JsonIgnore
-    private Date travelStart;
-
-    @JsonIgnore
-    private Date travelEnd;
-
     private boolean active;
 
     /*@JsonIgnore
@@ -67,7 +40,7 @@ public class Travellers {
 
                                                             //Voyage ataması ekle
 
-    public static Travellers fromCreate(CreateTraveller request, Voyages voyage, List<Travellers> relevantTravellers) {
+    /*public static Travellers fromCreate(CreateTraveller request, Voyages voyage, List<Travellers> relevantTravellers) {
         if (!voyage.isActive())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voyage is not active");
         Buss bus = voyage.getBus();
@@ -122,8 +95,43 @@ public class Travellers {
         traveller.setActive(true);
 
         return traveller;
-    }
+    }*/
 
+
+    public static Travellers fromCreate(CreateTraveller createTraveller) {
+        Travellers travellers = new Travellers();
+
+        String travellerName = requiredText(createTraveller.travellerName(), "Traveller name is required");
+        String travellerSurname = requiredText(createTraveller.travellerSurname(), "Traveller surname is required");
+        String gender = requiredText(createTraveller.gender(), "Gender is required");
+        String storedIdentification;
+
+        if (createTraveller.isForeign()) {
+            storedIdentification = "Foreigner";
+        } else {
+            String identificationNumber = createTraveller.identificationNumber();
+            if (identificationNumber == null || !identificationNumber.matches("\\d{11}"))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ıdentification number must contain 11 digits");
+            if (!validId(identificationNumber))
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid identification number");
+
+            String first;
+            String last;
+
+            first = createTraveller.identificationNumber().substring(0, 2);
+            last = createTraveller.identificationNumber().substring(9);
+
+            storedIdentification = first + "*******" + last;
+        }
+
+        travellers.setTravellerName(travellerName);
+        travellers.setTravellerSurname(travellerSurname);
+        travellers.setGender(gender);
+        travellers.setForeign(createTraveller.isForeign());
+        travellers.setIndentityNumber(storedIdentification);
+        travellers.setActive(true);
+        return travellers;
+    }
 
     public static ResponseTraveller toResponse(Travellers traveller) {
         return new ResponseTraveller(
@@ -133,18 +141,31 @@ public class Travellers {
                 traveller.getGender(),
                 traveller.isForeign(),
                 traveller.getIndentityNumber(),
-                Buss.toResponse(traveller.getBusId()),
-                traveller.getSeat(),
-                Voyages.toResponse(traveller.getVoyageId()),
-                traveller.getFirstStation(),
-                traveller.getLastStation(),
-                traveller.getTravelStart(),
-                traveller.getTravelEnd(),
                 traveller.isActive()
         );
     }
 
+    private static String requiredText(String value, String errorMessage) {
+        if (value == null || value.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage);
+        }
+        return value.trim();
+    }
+
     private static boolean validId(String identificationNumber) {
+        int[] numbers = new int[11];
+
+        for (int i = 0; i < 11; i++) {
+            numbers[i] = Integer.parseInt(identificationNumber.substring(i, (i + 1)));
+        }
+        boolean condition1 = (numbers[0] + numbers[1] + numbers[2] + numbers[3] + numbers[4] + numbers[5] + numbers[6] + numbers[7] + numbers[8] + numbers[9]) % 10 == numbers[10];
+        boolean condition2 = (((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 7) + ((numbers[1] + numbers[3] + numbers[5] + numbers[7]) * 9)) % 10 == numbers[9];
+        boolean condition3 = ((numbers[0] + numbers[2] + numbers[4] + numbers[6] + numbers[8]) * 8) % 10 == numbers[10];
+        return condition1 && condition2 && condition3;
+    }
+
+
+    /*private static boolean validId(String identificationNumber) {
         int[] numbers = new int[11];
 
         for (int i = 0; i < 11; i++) {
@@ -295,5 +316,5 @@ public class Travellers {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage);
         }
         return value.trim();
-    }
+    }*/
 }

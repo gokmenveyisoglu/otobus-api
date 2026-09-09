@@ -1,6 +1,5 @@
 package com.gokmen.otobusapi.controller;
 
-import com.gokmen.otobusapi.repository.entities.Booking;
 import com.gokmen.otobusapi.repository.record.Booking.CreateBooking;
 import com.gokmen.otobusapi.repository.record.Booking.ResponseBooking;
 import com.gokmen.otobusapi.service.BookingService;
@@ -21,8 +20,12 @@ public class BookingController {
     }
 
     @GetMapping()
-    public List<Booking> getBookings() {
+    public List<ResponseBooking> getBookings() {
         return bookingService.getBookings();
+    }
+    @GetMapping("/occupied-seats/{voyageId}")
+    public List<Integer> getOccupiedSeats(@PathVariable("voyageId") int voyageId) {
+        return bookingService.getOccupiedSeats(voyageId);
     }
     @PostMapping()
     public ResponseBooking seyBooking(@RequestBody CreateBooking request) {

@@ -33,10 +33,6 @@ public class Voyages {
     @ManyToOne(fetch = FetchType.EAGER)
     private Route routes;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "voyageId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Travellers> traveler;
-
     /*@JsonIgnore
     @ManyToMany(cascade = {CascadeType.DETACH,CascadeType.MERGE,CascadeType.PERSIST,CascadeType.REFRESH}, fetch = FetchType.LAZY, mappedBy = "stationOrder")
     private List<Stations> firstStation; // atamaları yap

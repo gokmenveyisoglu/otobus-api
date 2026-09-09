@@ -15,7 +15,5 @@ public interface TravellersService {
     void updateTraveller(int travelerId, UpdateTraveller request);
     void deactivateTraveller(int travellerId);
     List<ResponseTraveller> findAllTravellers();
-    List<Integer> getOccupiedSeats(int voyageId);
     Optional<Travellers> findById(int travellerId);
-    Optional<Travellers> findByBus(String plateNumber);
 }
