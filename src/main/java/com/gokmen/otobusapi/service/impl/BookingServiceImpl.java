@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -71,11 +72,11 @@ public class BookingServiceImpl implements BookingService {
         ArrayList<Travellers> travellers = new ArrayList<>();
 
         request.travellers().forEach(traveller1 -> {
-            Travellers traveller = new Travellers();
-            if (!sameGender(traveller1, voyage))
+            if (!isGenderCompatible(traveller1, voyage))
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The selected seat is adjacent to different gender");
             if (genderLock(traveller1, voyage))
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The gender lock happened.");
+            Travellers traveller = new Travellers();
 
             String travellerName = requiredText(traveller1.travellerName(), "Traveller name is required");
             String travellerSurname = requiredText(traveller1.travellerSurname(), "Traveller surname is required");
@@ -202,7 +203,7 @@ public class BookingServiceImpl implements BookingService {
         return normalizedFirstStart < normalizedSecondEnd && normalizedSecondStart < normalizedFirstEnd;
     }
 
-    private boolean sameGender(CreateTraveller request, Voyages voyages) {
+    private boolean isGenderCompatible(CreateTraveller request, Voyages voyages) {
         String requestedGender = request.gender().trim().toLowerCase(Locale.ROOT);
 
         if (!requestedGender.equals("erkek") && !requestedGender.equals("kadın"))
@@ -210,14 +211,15 @@ public class BookingServiceImpl implements BookingService {
 
         List<SchemaDetail> schemaDetails = voyages.getBus().getSchemaHeader().getSchemaDetails();
 
-        List<Travellers> relevantTravellers = travellerRepository.findActiveTravellersForJourney(voyages.getBus().getBus_id(), voyages.getJourneyNo()).stream().filter(traveller -> traveller.getVoyageId() == voyages).toList();
+        List<Travellers> relevantTravellers = travellerRepository.findActiveTravellersForJourney(voyages.getBus().getBus_id(), voyages.getJourneyNo()).stream().filter(traveller -> segmentsOverlap(voyages.getFirstStation(), voyages.getLastStation(), traveller.getFirstStation(), traveller.getLastStation())).toList(); // Sondaki filtre gerekiyor mu yoksa gerekmiyor mu kontrolet.
 
         for (Travellers travellers : relevantTravellers) {
             for (SchemaDetail row : schemaDetails) {
                 boolean sitNextToTraveller = (request.seat() == row.getColumn1() && travellers.getSeat() == row.getColumn2()) || (request.seat() == row.getColumn2() && travellers.getSeat() == row.getColumn1()) || (request.seat() == row.getColumn4() && travellers.getSeat() == row.getColumn5()) || (request.seat() == row.getColumn5() && travellers.getSeat() == row.getColumn4());
                 if (sitNextToTraveller) {
                     String existingGender = travellers.getGender().trim().toLowerCase(Locale.ROOT);
-                    return requestedGender.equals(existingGender);
+                    if (!requestedGender.equals(existingGender))
+                        return false;
                 }
             }
         }
@@ -253,71 +255,183 @@ public class BookingServiceImpl implements BookingService {
                 position[1] = 4;
             }
         }
+        List<Travellers> upperTravellers = relevantTravellers.stream().filter(traveller -> traveller.getSeat() < request.seat()).sorted(Comparator.comparingInt(Travellers::getSeat).reversed()).toList();
+        List<Travellers> lowerTravellers = relevantTravellers.stream().filter(traveller -> traveller.getSeat() > request.seat()).sorted(Comparator.comparingInt(Travellers::getSeat)).toList();
 
-        for (Travellers traveller : relevantTravellers) {
-            String gender = traveller.getGender().trim().toLowerCase(Locale.ROOT);
+        // Eğer kullanılmayan bir koltuk varsa sayaç durmuyor.
+
+        for (Travellers upperTraveller : upperTravellers) {
+            String genderU = upperTraveller.getGender().trim().toLowerCase(Locale.ROOT);
+            for (int l = 0; l < 3; l++) {
+                int upperPos = position[0] - (l + 1);
+                if (position[1] == 0) {
+                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn1()) {
+                        if (schemaDetails.get(upperPos).getColumn1() != 0 && isSeatOccupied(voyages, schemaDetails.get(upperPos).getColumn1())) {
+                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                up++;
+                            else upBreakPoint = true;
+                        } else upBreakPoint = true;
+                    }
+                }
+                if (position[1] == 1) {
+                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn2()) {
+                        if (schemaDetails.get(upperPos).getColumn2() != 0) {
+                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                up++;
+                            else upBreakPoint = true;
+                        } else upBreakPoint = true;
+                    } // schemaDetails.get(upperPos).getColumn2() != 0 kondisyonunda flaglenmesi gerekyiyor.
+                }
+                if (position[1] == 3) {
+                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn4()) {
+                        if (schemaDetails.get(upperPos).getColumn4() != 0) {
+                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                up++;
+                            else upBreakPoint = true;
+                        } else upBreakPoint = true;
+                    }
+                }
+                if (position[1] == 4) {
+                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn5()) {
+                        if (schemaDetails.get(upperPos).getColumn5() != 0) {
+                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                up++;
+                            else upBreakPoint = true;
+                        } else upBreakPoint = true;
+                    }
+                }
+            }
+        }
+
+        for (Travellers lowerTraveller : lowerTravellers) {
+            String genderD = lowerTraveller.getGender().trim().toLowerCase(Locale.ROOT);
+            for (int l = 0; l < 3; l++) {
+                int lowerPos = position[0] + (l + 1);
+                if (position[1] == 0) {
+                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn1()) {
+                        if (schemaDetails.get(lowerPos).getColumn1() != 0) {
+                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                down++;
+                            else downBreakPoint = true;
+                        } else downBreakPoint = true;
+                    }
+                }
+                if (position[1] == 1) {
+                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn2()) {
+                        if (schemaDetails.get(lowerPos).getColumn2() != 0) {
+                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                down++;
+                            else downBreakPoint = true;
+                        } else downBreakPoint = true;
+                    }
+                }
+                if (position[1] == 3) {
+                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn4()) {
+                        if (schemaDetails.get(lowerPos).getColumn4() != 0) {
+                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                down++;
+                            else downBreakPoint = true;
+                        } else downBreakPoint = true;
+                    }
+                }
+                if (position[1] == 4) {
+                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn5()) {
+                        if (schemaDetails.get(lowerPos).getColumn5() != 0) {
+                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                down++;
+                            else downBreakPoint = true;
+                        } else downBreakPoint = true;
+                    }
+                }
+            }
+        }
+
+        /*for (int i = 0; i < relevantTravellers.size(); i++) {
+            Travellers upperTraveller = null;
+            if (i < upperTravellers.size()) {
+                upperTraveller = upperTravellers.get(i);
+            }
+            Travellers lowerTraveller = null;
+            if (i < lowerTravellers.size()) {
+                lowerTraveller = lowerTravellers.get(i);
+            }
+
+            String genderU = upperTraveller.getGender().trim().toLowerCase(Locale.ROOT);
+            String genderD = lowerTraveller.getGender().trim().toLowerCase(Locale.ROOT);
             for (int l = 0; l < 3; l++) {
                 int upperPos = position[0] - (l + 1);
                 int lowerPos = position[0] + (l + 1);
                 if (position[1] == 0) {
                     if (position[0] - (l + 1) < (position[0] - l) && upperPos >= 0) {
                         if (schemaDetails.get(upperPos).getColumn1() != 0) {
-                            if (traveller.getSeat() == schemaDetails.get(upperPos).getColumn1()) {
-                                if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                            if (upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn1()) {
+                                if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
                                     up++;
                                 else upBreakPoint = true;
                             }
-                        }
-
+                        } else upBreakPoint = true;
                     }
                     if ((position[0] + l) < position[0] + (l + 1) && lowerPos < schemaDetails.size()) {
                         if (schemaDetails.get(lowerPos).getColumn1() != 0) {
-                            if (traveller.getSeat() == schemaDetails.get(lowerPos).getColumn1()) {
-                                if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                            if (lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn1()) {
+                                if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
                                     down++;
                                 else downBreakPoint = true;
                             }
-                        }
+                        } else downBreakPoint = true;
                     }
                 }
                 if (position[1] == 1) {
-                    if (upperPos >= 0 && schemaDetails.get(upperPos).getColumn2() != 0 && traveller.getSeat() == schemaDetails.get(upperPos).getColumn2()) {
-                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
-                            up++;
-                        else upBreakPoint = true;
+                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn2()) {
+                        if (schemaDetails.get(upperPos).getColumn2() != 0) {
+                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                up++;
+                            else upBreakPoint = true;
+                        } else upBreakPoint = true;
                     } // schemaDetails.get(upperPos).getColumn2() != 0 kondisyonunda flaglenmesi gerekyiyor.
-                    if (lowerPos < schemaDetails.size() && schemaDetails.get(lowerPos).getColumn2() != 0 && traveller.getSeat() == schemaDetails.get(lowerPos).getColumn2()) {
-                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
-                            down++;
-                        else downBreakPoint = true;
+                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn2()) {
+                        if (schemaDetails.get(lowerPos).getColumn2() != 0) {
+                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                down++;
+                            else downBreakPoint = true;
+                        } else downBreakPoint = true;
                     }
                 }
                 if (position[1] == 3) {
-                    if (upperPos >= 0 && schemaDetails.get(upperPos).getColumn4() != 0 && traveller.getSeat() == schemaDetails.get(upperPos).getColumn4()) {
-                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
-                            up++;
-                        else upBreakPoint = true;
+                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn4()) {
+                        if (schemaDetails.get(upperPos).getColumn4() != 0) {
+                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                up++;
+                            else upBreakPoint = true;
+                        } else upBreakPoint = true;
                     }
-                    if (lowerPos < schemaDetails.size() && schemaDetails.get(lowerPos).getColumn4() != 0 && traveller.getSeat() == schemaDetails.get(lowerPos).getColumn4()) {
-                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
-                            down++;
-                        else downBreakPoint = true;
+                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn4()) {
+                        if (schemaDetails.get(lowerPos).getColumn4() != 0) {
+                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                down++;
+                            else downBreakPoint = true;
+                        } else downBreakPoint = true;
                     }
                 }
                 if (position[1] == 4) {
-                    if (upperPos >= 0 && schemaDetails.get(upperPos).getColumn5() != 0 && traveller.getSeat() == schemaDetails.get(upperPos).getColumn5()) {
-                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
-                            up++;
-                        else upBreakPoint = true;
+                    if (upperPos >= 0 && upperTraveller.getSeat() == schemaDetails.get(upperPos).getColumn5()) {
+                        if (schemaDetails.get(upperPos).getColumn5() != 0) {
+                            if (genderU.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !upBreakPoint)
+                                up++;
+                            else upBreakPoint = true;
+                        } else upBreakPoint = true;
                     }
-                    if (lowerPos < schemaDetails.size() && schemaDetails.get(lowerPos).getColumn5() != 0 && traveller.getSeat() == schemaDetails.get(lowerPos).getColumn5()) {
-                        if (gender.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
-                            down++;
-                        else downBreakPoint = true;
+                    if (lowerPos < schemaDetails.size() && lowerTraveller.getSeat() == schemaDetails.get(lowerPos).getColumn5()) {
+                        if (schemaDetails.get(lowerPos).getColumn5() != 0) {
+                            if (genderD.equals(request.gender().trim().toLowerCase(Locale.ROOT)) && !downBreakPoint)
+                                down++;
+                            else downBreakPoint = true;
+                        } else downBreakPoint = true;
                     }
                 }
             }
-        }
+        }*/
+
         return up >= 3 || down >= 3 || (up + down) >= 3;
     }
 
