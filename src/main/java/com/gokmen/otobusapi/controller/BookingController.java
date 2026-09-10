@@ -31,7 +31,7 @@ public class BookingController {
     public ResponseBooking seyBooking(@RequestBody CreateBooking request) {
         return bookingService.setBooking(request);
     }
-    @PatchMapping("{id}")
+    @PatchMapping("{id}/deactivate")
     public ResponseBooking deactivateBooking(@PathVariable("id") int bookingId) {
         return bookingService.deactivateBooking(bookingId);
     }

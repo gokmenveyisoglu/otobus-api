@@ -72,7 +72,7 @@ public class Ticket {
     public static ResponseTicket toResponse(Ticket ticket) {
         return new ResponseTicket(
                 ticket.getTicketNumber(),
-                ticket.booking.getBookingId(),
+                ticket.getBooking().getBookingId(),
                 Travellers.toResponse(ticket.getTraveller()),
                 ticket.getSeat(),
                 ticket.getFare(),
