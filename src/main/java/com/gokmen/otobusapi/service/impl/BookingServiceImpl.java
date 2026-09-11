@@ -43,6 +43,19 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public ResponseBooking getBookingByReferenceNumber(String reference) {
+        if (reference == null || reference.isBlank())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Booking reference required.");
+
+        String normalizedReference = reference.trim().toUpperCase(Locale.ROOT);
+
+        Booking booking = bookingRepository.findByBookingReference(reference).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking with " + normalizedReference + " not found"));
+
+        return Booking.toResponse(booking);
+    }
+
+    @Override
     @Transactional
     public ResponseBooking setBooking(CreateBooking request) {
         Booking booking = new Booking();

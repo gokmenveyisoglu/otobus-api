@@ -21,4 +21,9 @@ public class TicketServiceImpl implements TicketService {
     public List<ResponseTicket> getTickets() {
         return ticketRepository.findAll().stream().map(Ticket::toResponse).toList();
     }
+
+    @Override
+    public List<ResponseTicket> getTicketsByBookingReference(String bookingReference) {
+        return ticketRepository.findTicketsByBookingReference(bookingReference).stream().map(Ticket::toResponse).toList();
+    }
 }

@@ -23,10 +23,15 @@ public class BookingController {
     public List<ResponseBooking> getBookings() {
         return bookingService.getBookings();
     }
+    @GetMapping("/{pnr}/ticket")
+    public ResponseBooking findBookingByReferenceNumber(@PathVariable("pnr") String reference) {
+        return this.bookingService.getBookingByReferenceNumber(reference);
+    }
     @GetMapping("/occupied-seats/{voyageId}")
     public List<Integer> getOccupiedSeats(@PathVariable("voyageId") int voyageId) {
         return bookingService.getOccupiedSeats(voyageId);
     }
+
     @PostMapping()
     public ResponseBooking seyBooking(@RequestBody CreateBooking request) {
         return bookingService.setBooking(request);
